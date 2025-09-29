@@ -4,9 +4,13 @@ require_once __DIR__ . "/db/Ordenes.php";
 
 session_start();
 
-$Usuario = $_SESSION['Usuario'];
-$Nombres = $_SESSION['Nombres'];
-$idUsuario = $_SESSION['idUsuarios'];
+if (!isset($_SESSION['usuario'])) {
+    header('Location: ../Login/Login.php');
+    exit();
+}
+
+$Usuario = $_SESSION['usuario'];
+$idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuarios_coordinadores'] : '';
 
 $ordenesObj = new Ordenes();
 // Obtener copes del coordinador mediante la función pivote
@@ -25,7 +29,6 @@ if (!empty($copes)) {
 } else {
     $ordenes = ['data' => []];
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -142,7 +145,7 @@ if (!empty($copes)) {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                             </svg>
                         </div>
-                        <span class="user-name"><?php echo $Nombres; ?></span>
+                        <span class="user-name"><?php echo $Usuario; ?></span>
                         <svg class="chevron-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>

@@ -29,14 +29,15 @@ try {
 	$auth = new Auth();
 	$user = $auth->autenticar($usuario, $password);
 	if ($user) {
-		// Aquí puedes iniciar sesión PHP si lo deseas
-		// session_start();
-		// $_SESSION['usuario'] = $user['usuario'];
+		// Iniciar sesión y guardar usuario en $_SESSION
+		if (session_status() === PHP_SESSION_NONE) {
+			session_start();
+		}
+		$_SESSION['usuario'] = $user['usuario'];
 		ob_clean();
 		echo json_encode([
 			'success' => true,
 			'message' => 'Autenticación exitosa',
-			// Puedes personalizar la redirección si lo deseas
 			'redirect' => '../Dashboard/Dashboard.php'
 		]);
 	} else {

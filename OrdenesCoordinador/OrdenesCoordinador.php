@@ -40,10 +40,7 @@ if (!empty($copes)) {
     <meta name="author" content="">
     <title>Órdenes Coordinador</title>
     <!-- Custom fonts for this template -->
-    <link href="/Operaciones/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
-    <!-- Custom styles for this template -->
-    <link href="/Operaciones/css/sb-admin-2.min.css" rel="stylesheet">
     <!-- Custom styles for this page -->
     <link href="https://cdn.datatables.net/v/dt/dt-2.2.2/datatables.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
@@ -145,7 +142,7 @@ if (!empty($copes)) {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                             </svg>
                         </div>
-                        <span class="user-name"><?php echo $Usuario, $idUsuario; ?></span>
+                        <span class="user-name"><?php echo $Usuario; ?></span>
                         <svg class="chevron-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
@@ -163,36 +160,48 @@ if (!empty($copes)) {
     <!-- Contenido principal -->
     <div class="main-content">
         <div class="container-fluid">
-            <!-- Incluir el preloader -->
-            <?php include('../RegistrarUsuariosCoordinadores/vistas/components/preloader.php'); ?>
+            <?php include('vistas/components/preloader.php'); ?>
             <h1 class="h3 mb-4 text-gray-800"><i class="fas fa-tasks"></i> Órdenes Coordinador</h1>
             <!-- Input hidden para idUsuario JS -->
             <input type="hidden" id="idUsuario" value="<?php echo htmlspecialchars($_SESSION['idusuarios_coordinadores']); ?>">
                 <div class="card-body">
                     <!-- Bloque de depuración temporal -->
                     <pre style="background:#f8f9fa;border:1px solid #ddd;padding:10px;max-height:300px;overflow:auto;">
-<?php
-echo "<b>Copes:</b> ";
-var_dump($copes);
-echo "\n<b>Ordenes:</b> ";
-var_dump($ordenes);
-?>
-</pre>
+                    <?php
+                    echo "<b>Copes:</b> ";
+                    var_dump($copes);
+                    echo "\n<b>Ordenes:</b> ";
+                    var_dump($ordenes);
+                    ?>
+                    </pre>
                     <div class="table-responsive">
                         <table id="tablaOrdenes" class="table table-striped table-bordered">
                             <thead>
                                 <tr>
-                                    <th>Folio</th>
+                                    <th>Folio Pisa</th>
                                     <th>Teléfono</th>
                                     <th>ONT</th>
-                                    <th>Estatus Real</th>
+                                    <th>N° Expediente</th>
+                                    <th>Cliente</th>
+                                    <th>Dirección</th>
                                     <th>Contratista</th>
                                     <th>Técnico</th>
                                     <th>COPE</th>
                                     <th>Área</th>
                                     <th>División</th>
+                                    <th>Distrito</th>
+                                    <th>Tecnología</th>
+                                    <th>Tipo Tarea</th>
+                                    <th>Tipo Instalación</th>
+                                    <th>Metraje</th>
+                                    <th>Terminal</th>
+                                    <th>Puerto</th>
+                                    <th>Paso</th>
+                                    <th>Coordenadas</th>
+                                    <th>Coord. Terminal</th>
                                     <th>Fecha</th>
-                                    <th>Estatus Orden</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -202,18 +211,43 @@ var_dump($ordenes);
                                         <td><span class="badge badge-info"><?= htmlspecialchars($orden['Folio_Pisa']) ?></span></td>
                                         <td><?= htmlspecialchars($orden['Telefono']) ?></td>
                                         <td><?= htmlspecialchars($orden['Ont']) ?></td>
-                                        <td><span class="badge badge-<?= $orden['Estatus_Real'] === 'Completada' ? 'success' : 'secondary' ?>"><?= htmlspecialchars($orden['Estatus_Real']) ?></span></td>
+                                        <td><?= htmlspecialchars($orden['NExpediente']) ?></td>
+                                        <td><?= htmlspecialchars($orden['nombre_completo_cliente']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Direccion_Cliente']) ?></td>
                                         <td><?= htmlspecialchars($orden['nombre_completo_contratista']) ?></td>
                                         <td><?= htmlspecialchars($orden['nombre_completo_tecnico']) ?></td>
                                         <td><span class="badge badge-primary"><?= htmlspecialchars($orden['COPE']) ?></span></td>
                                         <td><?= htmlspecialchars($orden['area']) ?></td>
                                         <td><?= htmlspecialchars($orden['Division']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Distrito']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Tecnologia']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Tipo_Tarea']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Tipo_Instalacion']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Metraje']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Terminal']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Puerto']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Step_Registro']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Latitud']) ?>, <?= htmlspecialchars($orden['Longitud']) ?></td>
+                                        <td><?= htmlspecialchars($orden['Latitud_Terminal']) ?>, <?= htmlspecialchars($orden['Longitud_Terminal']) ?></td>
                                         <td><?= htmlspecialchars($orden['Fecha_Coordiapp']) ?></td>
                                         <td><span class="badge badge-<?= $orden['Estatus_Orden'] === 'Cerrada' ? 'success' : 'warning' ?>"><?= htmlspecialchars($orden['Estatus_Orden']) ?></span></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div class="flex space-x-2">
+                                                <button onclick="viewMap(<?= htmlspecialchars(json_encode($orden), ENT_QUOTES, 'UTF-8') ?>)" class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100 transition-colors" title="Ver Mapa">
+                                                    <i class="fas fa-map-marker-alt"></i>
+                                                </button>
+                                                <button onclick="viewPhotos(<?= htmlspecialchars(json_encode($orden), ENT_QUOTES, 'UTF-8') ?>)" class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-100 transition-colors" title="Ver Fotos">
+                                                    <i class="fas fa-image"></i>
+                                                </button>
+                                                <button onclick="openPDF(<?= htmlspecialchars(json_encode($orden), ENT_QUOTES, 'UTF-8') ?>)" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100 transition-colors" title="Ver PDF">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <tr><td colspan="11">No hay órdenes para mostrar.</td></tr>
+                                <tr><td colspan="24">No hay órdenes para mostrar.</td></tr>
                             <?php endif; ?>
                             </tbody>
                         </table>
@@ -234,52 +268,155 @@ var_dump($ordenes);
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
     </a>
-    <!-- Incluir modales -->
-    <?php include('../Login/vistas/components/Logout.php'); ?>
-    <!-- jQuery primero -->
-    <script src="/Operaciones/vendor/jquery/jquery.min.js"></script>
-    <!-- Bootstrap core JavaScript (Bootstrap 4 for sb-admin-2)-->
-    <script src="/Operaciones/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <!-- Core plugin JavaScript-->
-    <script src="/Operaciones/vendor/jquery-easing/jquery.easing.min.js"></script>
-    <!-- Custom scripts for all pages-->
-    <script src="/Operaciones/js/sb-admin-2.min.js"></script>
-    <!-- DataTables -->
-    <script src="https://cdn.datatables.net/v/dt/dt-2.2.2/datatables.min.js"></script>
-    <!-- Toastify -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <!-- Custom JS -->
-    <script src="vistas/assets/js/preloader.js"></script>
-    <script src="vistas/assets/js/toasts.js"></script>
-    <script src="vistas/assets/js/notifications.js"></script>
-    <script src="vistas/assets/js/datatable_config.js"></script>
-    <script src="vistas/assets/js/ordenes.js"></script>
-    <script>
-        // Dropdown de módulos
-        document.getElementById('modulosDropdown').addEventListener('click', function(e) {
-            e.stopPropagation();
-            const menu = document.getElementById('modulosMenu');
-            const chevron = this.querySelector('.chevron-icon');
-            menu.classList.toggle('show');
-            chevron.classList.toggle('rotate');
-        });
-        // Menú de usuario
-        document.getElementById('userMenuButton').addEventListener('click', function(e) {
-            e.stopPropagation();
-            const menu = document.getElementById('userDropdownMenu');
-            const chevron = this.querySelector('.chevron-icon');
-            menu.classList.toggle('show');
-            chevron.classList.toggle('rotate');
-        });
-        // Cerrar dropdowns al hacer clic fuera
-        document.addEventListener('click', function() {
-            document.querySelectorAll('.dropdown-menu-custom, .user-dropdown').forEach(function(menu) {
-                menu.classList.remove('show');
-            });
-            document.querySelectorAll('.chevron-icon').forEach(function(chevron) {
-                chevron.classList.remove('rotate');
-            });
-        });
-    </script>
+        <!-- Incluir modales -->
+        <?php include('../Login/vistas/components/Logout.php'); ?>
+
+        <!-- Modal de Fotos -->
+        <div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="photoModalLabel">Fotografías Orden: <span id="modalFolioPisa"></span></h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <h6>Foto ONT</h6>
+                                <p class="text-muted small">Una fotografía de la parte frontal de la ONT</p>
+                                <div class="bg-light rounded p-2 text-center">
+                                    <img id="modalFotoOnt" src="" alt="Foto ONT" class="img-fluid rounded" onerror="this.src='https://via.placeholder.com/400x225?text=Sin+Imagen';">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Foto Casa Cliente</h6>
+                                <p class="text-muted small">Una fotografía de la casa del cliente</p>
+                                <div class="bg-light rounded p-2 text-center">
+                                    <img id="modalFotoCasaCliente" src="" alt="Foto Casa Cliente" class="img-fluid rounded" onerror="this.src='https://via.placeholder.com/400x225?text=Sin+Imagen';">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>No. Serie ONT</h6>
+                                <p class="text-muted small">Una fotografía de la parte trasera de la ONT</p>
+                                <div class="bg-light rounded p-2 text-center">
+                                    <img id="modalNoSerieONT" src="" alt="No. Serie ONT" class="img-fluid rounded" onerror="this.src='https://via.placeholder.com/400x225?text=Sin+Imagen';">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Foto Terminal</h6>
+                                <p class="text-muted small">Una fotografía de la terminal</p>
+                                <div class="bg-light rounded p-2 text-center">
+                                    <img id="modalFotoPuerto" src="" alt="Foto Puerto" class="img-fluid rounded" onerror="this.src='https://via.placeholder.com/400x225?text=Sin+Imagen';">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Foto SO</h6>
+                                <p class="text-muted small">Una fotografía de la hoja de servicio</p>
+                                <div class="bg-light rounded p-2 text-center">
+                                    <img id="modalFotoINE" src="" alt="Foto INE" class="img-fluid rounded" onerror="this.src='https://via.placeholder.com/400x225?text=Sin+Imagen';">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- jQuery y dependencias necesarias -->
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+        <!-- DataTables (requiere jQuery) -->
+        <script src="https://cdn.datatables.net/v/dt/dt-2.2.2/datatables.min.js"></script>
+        <!-- Bootstrap core JavaScript (Bootstrap 5) -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- Toastify -->
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+        <!-- Custom JS -->
+        <script src="vistas/assets/js/preloader.js"></script>
+        <script src="vistas/assets/js/toasts.js"></script>
+        <script src="vistas/assets/js/notifications.js"></script>
+        <script src="vistas/assets/js/datatable_config.js"></script>
+        <script src="vistas/assets/js/ordenes.js"></script>
+        <script>
+                // Dropdown de módulos
+                document.getElementById('modulosDropdown').addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const menu = document.getElementById('modulosMenu');
+                        const chevron = this.querySelector('.chevron-icon');
+                        menu.classList.toggle('show');
+                        chevron.classList.toggle('rotate');
+                });
+                // Menú de usuario
+                document.getElementById('userMenuButton').addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const menu = document.getElementById('userDropdownMenu');
+                        const chevron = this.querySelector('.chevron-icon');
+                        menu.classList.toggle('show');
+                        chevron.classList.toggle('rotate');
+                });
+                // Cerrar dropdowns al hacer clic fuera
+                document.addEventListener('click', function() {
+                        document.querySelectorAll('.dropdown-menu-custom, .user-dropdown').forEach(function(menu) {
+                                menu.classList.remove('show');
+                        });
+                        document.querySelectorAll('.chevron-icon').forEach(function(chevron) {
+                                chevron.classList.remove('rotate');
+                        });
+                });
+
+                // Modal de fotos
+                function viewPhotos(orden) {
+                    if (typeof orden === 'string') {
+                        orden = JSON.parse(orden);
+                    }
+                    const noDisponible = 'vistas/assets/nodisponible.webp';
+                    document.getElementById('modalFolioPisa').textContent = orden.Folio_Pisa || '';
+                    // Helper para setear src y fallback
+                    function setImg(id, path) {
+                        const img = document.getElementById(id);
+                        if (path) {
+                            img.src = 'https://api.ed-intra.com/' + path.replace('../', '');
+                        } else {
+                            img.src = noDisponible;
+                        }
+                        img.onerror = function() { this.onerror = null; this.src = noDisponible; };
+                    }
+                    setImg('modalFotoOnt', orden.Foto_Ont);
+                    setImg('modalFotoCasaCliente', orden.Foto_Casa_Cliente);
+                    setImg('modalNoSerieONT', orden.No_Serie_ONT);
+                    setImg('modalFotoPuerto', orden.Foto_Puerto);
+                    setImg('modalFotoINE', orden.Foto_INE);
+                    var modal = new bootstrap.Modal(document.getElementById('photoModal'));
+                    modal.show();
+                }
+
+                // Abrir PDF en nueva pestaña
+                function openPDF(orden) {
+                    if (typeof orden === 'string') {
+                        orden = JSON.parse(orden);
+                    }
+                    if (orden.Folio_Pisa) {
+                        const pdfUrl = `https://erp.ed-intra.com/Operaciones/modal/R20.php?Folio_Pisa=${orden.Folio_Pisa}`;
+                        window.open(pdfUrl, '_blank');
+                    }
+                }
+
+                // Ver mapa en Google Maps
+                function viewMap(orden) {
+                    if (typeof orden === 'string') {
+                        orden = JSON.parse(orden);
+                    }
+                    if (orden.Latitud && orden.Longitud) {
+                        let mapsUrl;
+                        if (orden.Latitud_Terminal && orden.Longitud_Terminal) {
+                            mapsUrl = `https://www.google.com/maps/dir/${orden.Latitud},${orden.Longitud}/${orden.Latitud_Terminal},${orden.Longitud_Terminal}`;
+                        } else {
+                            mapsUrl = `https://www.google.com/maps/search/?api=1&query=${orden.Latitud},${orden.Longitud}`;
+                        }
+                        window.open(mapsUrl, '_blank');
+                    } else {
+                        alert('No hay coordenadas disponibles para este registro');
+                    }
+                }
+        </script>
 </body>
 </html>

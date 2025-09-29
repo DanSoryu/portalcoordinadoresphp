@@ -23,8 +23,8 @@ try {
     $copes = [];
     if (!empty($copesData)) {
         foreach ($copesData as $copeRow) {
-            if (isset($copeRow['COPE'])) {
-                $copes[] = $copeRow['COPE'];
+            if (isset($copeRow['id'])) {
+                $copes[] = $copeRow['id'];
             }
         }
     }

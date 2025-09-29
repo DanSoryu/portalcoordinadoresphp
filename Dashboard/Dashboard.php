@@ -170,8 +170,7 @@ $Usuario = $_SESSION['usuario'];
 
     session_start();
 
-    $Usuario = $_SESSION['Usuario'];
-    $Nombres = $_SESSION['Nombres'];
+    $Usuario = $_SESSION['usuario'];
     $idUsuario = $_SESSION['idUsuarios'];
 
     if (empty($Usuario)) {
@@ -436,7 +435,6 @@ $Usuario = $_SESSION['usuario'];
             </li>
             
             <?php
-                if (in_array($_SESSION['Usuario'], ['RYMVIEW', 'JMWU', 'RCM', 'JULIO', 'FIGR', 'SERRATOSADMIN','GFMT']) || $_SESSION['TipoUsuario'] === 'Admin') {
                     echo '
                         <li class="nav-item">
                             <a class="nav-link" href="CargarFotografias.php">
@@ -452,7 +450,7 @@ $Usuario = $_SESSION['usuario'];
                                 <span>REGISTRAR USUARIOS COORDINADORES</span>
                             </a>
                         </li>';
-                }
+                
             ?>
 
             <!-- Divider -->
@@ -516,7 +514,7 @@ $Usuario = $_SESSION['usuario'];
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo $Nombres;?></span>
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo $Usuario;?></span>
                                 <img class="img-profile rounded-circle" src="img/undraw_profile.svg">
                             </a>
                             <!-- Dropdown - User Information -->
@@ -1521,7 +1519,6 @@ $Usuario = $_SESSION['usuario'];
     session_start();
 
     $Usuario = $_SESSION['Usuario'];
-    $Nombres = $_SESSION['Nombres'];
     $idUsuario = $_SESSION['idUsuarios'];
 
     if (empty($Usuario)) {
@@ -1867,7 +1864,7 @@ $Usuario = $_SESSION['usuario'];
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo $Nombres;?></span>
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo $Usuario;?></span>
                                 <img class="img-profile rounded-circle" src="img/undraw_profile.svg">
                             </a>
                             <!-- Dropdown - User Information -->
@@ -2218,8 +2215,7 @@ $Usuario = $_SESSION['usuario'];
                     </div>
                 </div>
                 
-                <?php if ($Usuario == "SERRATOSADMIN" || $Usuario == "rcm" || $Usuario == "RCM" || $Usuario == "JCO" || $Usuario == "FIGR" || $Usuario == "root") { ?>
-                <!-- Detalle por Divisiones -->
+''                <!-- Detalle por Divisiones -->
                 <div class="row">
                     <div class="col-12">
                         <div class="card shadow mb-4">
@@ -2240,7 +2236,6 @@ $Usuario = $_SESSION['usuario'];
                         </div>
                     </div>
                 </div>
-                <?php } ?>
             `;
             
             $('#dashboardContent').html(html);

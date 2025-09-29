@@ -34,6 +34,7 @@ try {
 			session_start();
 		}
 		$_SESSION['usuario'] = $user['usuario'];
+		$_SESSION['idusuarios_coordinadores'] = $user['idusuarios_coordinadores'];
 		ob_clean();
 		echo json_encode([
 			'success' => true,

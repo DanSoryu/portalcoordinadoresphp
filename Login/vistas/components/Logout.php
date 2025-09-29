@@ -20,4 +20,3 @@
 		</div>
 	</div>
 </div>
-<script src="/assets/js/Logout.js"></script>

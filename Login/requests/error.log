@@ -56,3 +56,5 @@
 [29-Sep-2025 21:23:17 Europe/Berlin] PHP Deprecated:  Constant FILTER_SANITIZE_STRING is deprecated in C:\xampp\htdocs\PortalCoordinadores\Login\requests\login_usuario.php on line 20
 [29-Sep-2025 21:33:01 Europe/Berlin] PHP Deprecated:  Constant FILTER_SANITIZE_STRING is deprecated in C:\xampp\htdocs\PortalCoordinadores\Login\requests\login_usuario.php on line 19
 [29-Sep-2025 21:33:01 Europe/Berlin] PHP Deprecated:  Constant FILTER_SANITIZE_STRING is deprecated in C:\xampp\htdocs\PortalCoordinadores\Login\requests\login_usuario.php on line 20
+[29-Sep-2025 21:56:32 Europe/Berlin] PHP Deprecated:  Constant FILTER_SANITIZE_STRING is deprecated in C:\xampp\htdocs\PortalCoordinadores\Login\requests\login_usuario.php on line 19
+[29-Sep-2025 21:56:32 Europe/Berlin] PHP Deprecated:  Constant FILTER_SANITIZE_STRING is deprecated in C:\xampp\htdocs\PortalCoordinadores\Login\requests\login_usuario.php on line 20

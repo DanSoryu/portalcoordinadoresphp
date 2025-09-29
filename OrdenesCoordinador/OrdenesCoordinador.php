@@ -10,7 +10,7 @@ if (!isset($_SESSION['usuario'])) {
 }
 
 $Usuario = $_SESSION['usuario'];
-$idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuarios_coordinadores'] : '';
+$idUsuario = $_SESSION['idusuarios_coordinadores'];
 
 $ordenesObj = new Ordenes();
 // Obtener copes del coordinador mediante la función pivote
@@ -18,14 +18,14 @@ $copesData = $ordenesObj->obtenerCopesCoordinador($idUsuario);
 $copes = [];
 if (!empty($copesData)) {
     foreach ($copesData as $copeRow) {
-        if (isset($copeRow['COPE'])) {
-            $copes[] = $copeRow['COPE'];
+        if (isset($copeRow['id'])) {
+            $copes[] = $copeRow['id'];
         }
     }
 }
 // Ahora obtener las órdenes solo si hay copes
 if (!empty($copes)) {
-    $ordenes = $ordenesObj->obtenerOrdenesPorDivision($copes);
+    $ordenes = $ordenesObj->obtenerOrdenesPorCopes($copes);
 } else {
     $ordenes = ['data' => []];
 }
@@ -145,7 +145,7 @@ if (!empty($copes)) {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                             </svg>
                         </div>
-                        <span class="user-name"><?php echo $Usuario; ?></span>
+                        <span class="user-name"><?php echo $Usuario, $idUsuario; ?></span>
                         <svg class="chevron-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>

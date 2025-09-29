@@ -97,7 +97,7 @@ $idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuario
                             </div>
                         </div>
                         <div class="nav-item">
-                            <a class="nav-link" href="../Dashboard/Dashboard.php>
+                            <a class="nav-link" href="../Dashboard/Dashboard.php">
                                 <i class="fas fa-tachometer-alt"></i>
                                 <span>Dashboard</span>
                             </a>

@@ -1,32 +1,3 @@
-<?php
-// Vista principal para mostrar la tabla de órdenes coordinador
-require_once __DIR__ . "/db/Ordenes.php";
-
-session_start();
-
-$Usuario = $_SESSION['Usuario'];
-$Nombres = $_SESSION['Nombres'];
-$idUsuario = $_SESSION['idUsuarios'];
-
-$ordenesObj = new Ordenes();
-// Obtener copes del coordinador mediante la función pivote
-$copesData = $ordenesObj->obtenerCopesCoordinador($idUsuario);
-$copes = [];
-if (!empty($copesData)) {
-    foreach ($copesData as $copeRow) {
-        if (isset($copeRow['COPE'])) {
-            $copes[] = $copeRow['COPE'];
-        }
-    }
-}
-// Ahora obtener las órdenes solo si hay copes
-if (!empty($copes)) {
-    $ordenes = $ordenesObj->obtenerOrdenesPorDivision($copes);
-} else {
-    $ordenes = ['data' => []];
-}
-
-?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -35,7 +6,7 @@ if (!empty($copes)) {
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="">
     <meta name="author" content="">
-    <title>Órdenes Coordinador</title>
+    <title>Dashboard</title>
     <!-- Custom fonts for this template -->
     <link href="/Operaciones/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
@@ -115,19 +86,19 @@ if (!empty($copes)) {
                             </div>
                         </div>
                         <div class="nav-item">
-                            <a class="nav-link" href="../Dashboard/Dashboard.php">
+                            <a class="nav-link" href="../Dashboard/Dashboard.php>
                                 <i class="fas fa-tachometer-alt"></i>
                                 <span>Dashboard</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a class="nav-link" href="./OrdenesCoordinador.php">
+                            <a class="nav-link" href="../OrdenesCoordinador/OrdenesCoordinador.php">
                                 <i class="fas fa-table"></i>
                                 <span>Ordenes Coordiapp</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a class="nav-link" href="../OrdenesTAC/OrdenesTAC.php">
+                            <a class="nav-link" href="./OrdenesTAC.php">
                                 <i class="fas fa-file-invoice"></i>
                                 <span>Ordenes TAC</span>
                             </a>
@@ -142,7 +113,11 @@ if (!empty($copes)) {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                             </svg>
                         </div>
-                        <span class="user-name"><?php echo $Nombres; ?></span>
+<?php
+session_start();
+$Nombres = isset($_SESSION['usuario']) ? $_SESSION['usuario'] : 'Invitado';
+?>
+                        <span class="user-name"><?php echo htmlspecialchars($Nombres); ?></span>
                         <svg class="chevron-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
@@ -157,81 +132,7 @@ if (!empty($copes)) {
             </div>
         </div>
     </header>
-    <!-- Contenido principal -->
-    <div class="main-content">
-        <div class="container-fluid">
-            <!-- Incluir el preloader -->
-            <?php include('../RegistrarUsuariosCoordinadores/vistas/components/preloader.php'); ?>
-            <h1 class="h3 mb-4 text-gray-800"><i class="fas fa-tasks"></i> Órdenes Coordinador</h1>
-            <!-- Input hidden para idUsuario JS -->
-            <input type="hidden" id="idUsuario" value="<?php echo htmlspecialchars($_SESSION['idusuarios_coordinadores']); ?>">
-                <div class="card-body">
-                    <!-- Bloque de depuración temporal -->
-                    <pre style="background:#f8f9fa;border:1px solid #ddd;padding:10px;max-height:300px;overflow:auto;">
-<?php
-echo "<b>Copes:</b> ";
-var_dump($copes);
-echo "\n<b>Ordenes:</b> ";
-var_dump($ordenes);
-?>
-</pre>
-                    <div class="table-responsive">
-                        <table id="tablaOrdenes" class="table table-striped table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Folio</th>
-                                    <th>Teléfono</th>
-                                    <th>ONT</th>
-                                    <th>Estatus Real</th>
-                                    <th>Contratista</th>
-                                    <th>Técnico</th>
-                                    <th>COPE</th>
-                                    <th>Área</th>
-                                    <th>División</th>
-                                    <th>Fecha</th>
-                                    <th>Estatus Orden</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            <?php if (!empty($ordenes['data'])): ?>
-                                <?php foreach ($ordenes['data'] as $orden): ?>
-                                    <tr>
-                                        <td><span class="badge badge-info"><?= htmlspecialchars($orden['Folio_Pisa']) ?></span></td>
-                                        <td><?= htmlspecialchars($orden['Telefono']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Ont']) ?></td>
-                                        <td><span class="badge badge-<?= $orden['Estatus_Real'] === 'Completada' ? 'success' : 'secondary' ?>"><?= htmlspecialchars($orden['Estatus_Real']) ?></span></td>
-                                        <td><?= htmlspecialchars($orden['nombre_completo_contratista']) ?></td>
-                                        <td><?= htmlspecialchars($orden['nombre_completo_tecnico']) ?></td>
-                                        <td><span class="badge badge-primary"><?= htmlspecialchars($orden['COPE']) ?></span></td>
-                                        <td><?= htmlspecialchars($orden['area']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Division']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Fecha_Coordiapp']) ?></td>
-                                        <td><span class="badge badge-<?= $orden['Estatus_Orden'] === 'Cerrada' ? 'success' : 'warning' ?>"><?= htmlspecialchars($orden['Estatus_Orden']) ?></span></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr><td colspan="11">No hay órdenes para mostrar.</td></tr>
-                            <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Footer -->
-    <footer class="sticky-footer bg-white">
-        <div class="container my-auto">
-            <div class="copyright text-center my-auto">
-                <span>Copyright &copy; ENLACE DIGITAL 2025</span>
-            </div>
-        </div>
-    </footer>
-    <!-- Scroll to Top Button-->
-    <a class="scroll-to-top rounded" href="#page-top">
-        <i class="fas fa-angle-up"></i>
-    </a>
-    <!-- Incluir modales -->
+
     <?php include('../Login/vistas/components/Logout.php'); ?>
     <!-- jQuery primero -->
     <script src="/Operaciones/vendor/jquery/jquery.min.js"></script>
@@ -249,34 +150,5 @@ var_dump($ordenes);
     <script src="vistas/assets/js/preloader.js"></script>
     <script src="vistas/assets/js/toasts.js"></script>
     <script src="vistas/assets/js/notifications.js"></script>
-    <script src="vistas/assets/js/datatable_config.js"></script>
-    <script src="vistas/assets/js/ordenes.js"></script>
-    <script>
-        // Dropdown de módulos
-        document.getElementById('modulosDropdown').addEventListener('click', function(e) {
-            e.stopPropagation();
-            const menu = document.getElementById('modulosMenu');
-            const chevron = this.querySelector('.chevron-icon');
-            menu.classList.toggle('show');
-            chevron.classList.toggle('rotate');
-        });
-        // Menú de usuario
-        document.getElementById('userMenuButton').addEventListener('click', function(e) {
-            e.stopPropagation();
-            const menu = document.getElementById('userDropdownMenu');
-            const chevron = this.querySelector('.chevron-icon');
-            menu.classList.toggle('show');
-            chevron.classList.toggle('rotate');
-        });
-        // Cerrar dropdowns al hacer clic fuera
-        document.addEventListener('click', function() {
-            document.querySelectorAll('.dropdown-menu-custom, .user-dropdown').forEach(function(menu) {
-                menu.classList.remove('show');
-            });
-            document.querySelectorAll('.chevron-icon').forEach(function(chevron) {
-                chevron.classList.remove('rotate');
-            });
-        });
-    </script>
 </body>
 </html>

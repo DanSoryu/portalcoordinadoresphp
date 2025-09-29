@@ -1,9 +1,9 @@
 <?php
-require_once $_SERVER['DOCUMENT_ROOT'] . "/cnx/cnx.php";
+require_once $_SERVER['DOCUMENT_ROOT'] . "/PortalCoordinadores/cnx/cnx.php";
 
 class Ordenes extends Conexion
 {
-    public function obtenerOrdenesPorDivision($copes, $fechaInicio = null, $fechaFin = null, $estatusOrden = null, $perPage = 20, $page = 1)
+    public function obtenerOrdenesPorCopes($copes, $fechaInicio = null, $fechaFin = null, $estatusOrden = null, $perPage = 20, $page = 1)
     {
         try {
             $conexion = $this->get_conexion();
@@ -110,6 +110,28 @@ class Ordenes extends Conexion
                 'error' => true,
                 'message' => 'Error al obtener las órdenes'
             ];
+        }
+    }
+
+    // Método para obtener los COPEs asignados a un coordinador
+    public function obtenerCopesCoordinador($idCoordinador)
+    {
+        try {
+            $conexion = $this->get_conexion();
+            $query = "SELECT c.id, c.COPE 
+                     FROM copes c 
+                     INNER JOIN coordinador_cope cc ON c.id = cc.FK_Cope 
+                     WHERE cc.FK_Coordinador = :idCoordinador 
+                     ORDER BY c.COPE";
+            
+            $stmt = $conexion->prepare($query);
+            $stmt->bindParam(':idCoordinador', $idCoordinador);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error en obtenerCopesCoordinador: " . $e->getMessage());
+            return array();
         }
     }
 }

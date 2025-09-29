@@ -1,0 +1,7 @@
+[27-Sep-2025 18:19:01 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined method Usuarios_coordinadores::eliminarUsuarioCoordinador() in C:\xampp\htdocs\Operaciones\RegistrarUsuariosCoordinadores\requests\eliminar_usuario_coordinador.php:38
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\Operaciones\RegistrarUsuariosCoordinadores\requests\eliminar_usuario_coordinador.php on line 38
+[29-Sep-2025 18:32:50 Europe/Berlin] PHP Deprecated:  Constant FILTER_SANITIZE_STRING is deprecated in C:\xampp\htdocs\PortalCoordinadores\RegistrarUsuariosCoordinadores\requests\guardar_usuario_coordinador.php on line 27
+[29-Sep-2025 18:32:50 Europe/Berlin] PHP Deprecated:  Constant FILTER_SANITIZE_STRING is deprecated in C:\xampp\htdocs\PortalCoordinadores\RegistrarUsuariosCoordinadores\requests\guardar_usuario_coordinador.php on line 28
+[29-Sep-2025 18:32:50 Europe/Berlin] Datos recibidos - Usuario: da, Password: presente, COPEs: ["236"]

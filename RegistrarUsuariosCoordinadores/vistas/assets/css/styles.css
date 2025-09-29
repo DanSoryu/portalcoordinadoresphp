@@ -1,0 +1,35 @@
+body {
+    background: linear-gradient(to right, #2C5364, #203A43, #0F2027);
+    font-family: 'Numans', sans-serif;
+}
+.card {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 1rem;
+}
+.table thead th {
+    background-color: #203A43 !important;
+    color: #fff !important;
+    font-weight: 600;
+}
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(44, 83, 100, 0.1);
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: #203A43;
+    color: white !important;
+    border-color: #203A43;
+}
+
+.dt-custom-filter {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 20px;
+}
+
+.dt-custom-filter select {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background-color: white;
+    font-size: 14px;
+}

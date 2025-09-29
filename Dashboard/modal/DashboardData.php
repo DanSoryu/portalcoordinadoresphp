@@ -1,0 +1,552 @@
+<?php
+header('Content-Type: application/json');
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+try {
+    // Configuración de conexiones a bases de datos
+    class DatabaseConnections {
+        
+        public static function conectarCoordiapp() {
+            try {
+                $host = '74.208.237.139';
+                $user = 'erpintr1';
+                $password = '#k1u3T3f5';
+                $database = 'erpintr1_erp';
+                
+                $pdo = new PDO("mysql:host=$host;dbname=$database;charset=utf8", $user, $password);
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                return $pdo;
+            } catch (Exception $e) {
+                throw new Exception("Error conectando a COORDIAPP: " . $e->getMessage());
+            }
+        }
+        
+        public static function conectarTac() {
+            try {
+                $host = '67.217.246.65';
+                $user = 'erpintr1';
+                $password = '#k1u3T3f5';
+                $database = 'analisis_bd';
+                
+                $pdo = new PDO("mysql:host=$host;dbname=$database;charset=utf8", $user, $password);
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                return $pdo;
+            } catch (Exception $e) {
+                throw new Exception("Error conectando a TAC: " . $e->getMessage());
+            }
+        }
+    }
+    
+    // Clase principal del dashboard
+    class DashboardCoordiapp {
+        
+        private $conn_coordiapp;
+        private $conn_tac;
+        
+        public function __construct() {
+            $this->conn_coordiapp = DatabaseConnections::conectarCoordiapp();
+            $this->conn_tac = DatabaseConnections::conectarTac();
+        }
+
+        private function obtenerMapaTecnicos($folios) {
+            if (empty($folios)) {
+                return array();
+            }
+
+            // Crear placeholders para la consulta IN
+            $placeholders = str_repeat('?,', count($folios) - 1) . '?';
+            
+            // Consultar en TAC devolviendo técnico y expediente por separado
+            $query = "
+                SELECT 
+                    Folio_Pisa,
+                    TRIM(IFNULL(tecnico, '')) AS tecnico,
+                    TRIM(IFNULL(Expediente, '')) AS expediente
+                FROM qm_tac_prod_bolsa
+                WHERE Folio_Pisa IN ($placeholders)
+                ORDER BY FECHA_LIQ DESC
+            ";
+            
+            try {
+                $stmt = $this->conn_tac->prepare($query);
+                $stmt->execute($folios);
+                
+                // Crear un mapa de folio -> nombre del técnico
+                $mapa_tecnicos = array();
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $folio_key = strval(trim($row['Folio_Pisa']));
+                    // Mantener solo el primer técnico encontrado por folio
+                    if (!isset($mapa_tecnicos[$folio_key])) {
+                        $mapa_tecnicos[$folio_key] = array(
+                            'tecnico' => isset($row['tecnico']) ? trim($row['tecnico']) : '',
+                            'expediente' => isset($row['expediente']) ? strval(trim($row['expediente'])) : ''
+                        );
+                    }
+                }
+                return $mapa_tecnicos;
+            } catch (Exception $e) {
+                error_log("Error obteniendo nombres de técnicos desde TAC: " . $e->getMessage());
+                return array();
+            }
+        }
+        
+        public function obtenerOrdenesTac($fecha_inicio, $fecha_fin = null) {
+            // Si no se proporciona fecha_fin, usar la misma fecha_inicio
+            if ($fecha_fin === null) {
+                $fecha_fin = $fecha_inicio;
+            }
+            
+            $query = "
+                SELECT 
+                    Folio_Pisa,
+                    TELEFONO,
+                    NOM_AREA,
+                    IFNULL(NOM_DIVISION, 'Sin División') as NOM_DIVISION,
+                    NOM_CT,
+                    DATE(FECHA_LIQ) as FECHA_LIQ
+                FROM qm_tac_prod_bolsa 
+                WHERE DATE(FECHA_LIQ) BETWEEN :fecha_inicio AND :fecha_fin
+                AND Calificador_Edo = 'COMPLETADA'
+                ORDER BY FECHA_LIQ DESC, NOM_DIVISION, NOM_CT
+            ";
+            
+            $stmt = $this->conn_tac->prepare($query);
+            $stmt->bindParam(':fecha_inicio', $fecha_inicio);
+            $stmt->bindParam(':fecha_fin', $fecha_fin);
+            $stmt->execute();
+            
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Debug: Log de consulta TAC
+            error_log("TAC Query - Fechas: $fecha_inicio a $fecha_fin, Registros encontrados: " . count($result));
+            
+            return $result;
+        }
+
+        public function obtenerAsignadasTac($fecha_inicio, $fecha_fin = null) {
+            // Si no se proporciona fecha_fin, usar la misma fecha_inicio
+            if ($fecha_fin === null) {
+                $fecha_fin = $fecha_inicio;
+            }
+            
+            $query = "
+                SELECT 
+                    Folio_Pisa,
+                    TELEFONO,
+                    NOM_AREA,
+                    IFNULL(NOM_DIVISION, 'Sin División') as NOM_DIVISION,
+                    NOM_CT,
+                    DATE(FECHA_LIQ) as FECHA_LIQ
+                FROM qm_tac_prod_bolsa 
+                WHERE DATE(FECHA_LIQ) BETWEEN :fecha_inicio AND :fecha_fin
+                AND Calificador_Edo = 'ASIGNADA'
+                ORDER BY FECHA_LIQ DESC, NOM_DIVISION, NOM_CT
+            ";
+            
+            $stmt = $this->conn_tac->prepare($query);
+            $stmt->bindParam(':fecha_inicio', $fecha_inicio);
+            $stmt->bindParam(':fecha_fin', $fecha_fin);
+            $stmt->execute();
+            
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Debug: Log de consulta TAC
+            error_log("TAC Query - Fechas: $fecha_inicio a $fecha_fin, Registros encontrados: " . count($result));
+            
+            return $result;
+        }
+        
+        public function obtenerOrdenesCoordiapp() {
+            $query = "
+                SELECT 
+                    Folio_Pisa,
+                    Fecha_Coordiapp
+                FROM tecnico_instalaciones_coordiapp
+                ORDER BY Fecha_Coordiapp DESC
+            ";
+            
+            $stmt = $this->conn_coordiapp->prepare($query);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        
+        public function identificarFaltantes($ordenes_tac, $ordenes_coordiapp) {
+            // Crear set de folios en COORDIAPP para búsqueda rápida
+            $coordiapp_folios = array();
+            foreach ($ordenes_coordiapp as $orden) {
+                $folio = $orden['Folio_Pisa'];
+                if (!empty($folio)) {
+                    $coordiapp_folios[strval($folio)] = true;
+                }
+            }
+            
+            // Identificar faltantes
+            $faltantes = array();
+            foreach ($ordenes_tac as $orden) {
+                $folio = $orden['Folio_Pisa'];
+                if (!empty($folio)) {
+                    $folio_str = strval($folio);
+                    if (!isset($coordiapp_folios[$folio_str])) {
+                        $faltantes[] = $orden;
+                    }
+                }
+            }
+            
+            return $faltantes;
+        }
+        
+        public function calcularEstadisticasPorArea($ordenes_tac, $ordenes_asignadas, $faltantes) {
+            $areas_stats = array();
+            $division_stats = array();
+            
+            // Inicializar estadísticas por área y división
+            foreach ($ordenes_tac as $orden) {
+                $area = !empty($orden['NOM_AREA']) ? trim($orden['NOM_AREA']) : 'Sin Área';
+                $division = !empty($orden['NOM_DIVISION']) ? trim($orden['NOM_DIVISION']) : 'Sin División';
+                $cope = !empty($orden['NOM_CT']) ? trim($orden['NOM_CT']) : 'SIN_COPE';
+                
+                // Debug para ver qué valores estamos recibiendo
+                error_log("División recibida: " . print_r($orden['NOM_DIVISION'], true));
+                
+                // Estadísticas por área para las gráficas
+                if (!isset($areas_stats[$area])) {
+                    $areas_stats[$area] = array(
+                        'area' => $area,
+                        'total_tac' => 0,
+                        'registradas' => 0,
+                        'faltantes' => 0
+                    );
+                }
+                $areas_stats[$area]['total_tac']++;
+                
+                // Estadísticas por división para el detalle
+                if (!isset($division_stats[$division])) {
+                    $division_stats[$division] = array(
+                        'division' => $division,
+                        'total_tac' => 0,
+                        'total_asignadas' => 0,
+                        'registradas' => 0,
+                        'faltantes' => 0,
+                        'folios_faltantes' => array(),
+                        'copes' => array()
+                    );
+                }
+                
+                if (!isset($division_stats[$division]['copes'][$cope])) {
+                    $division_stats[$division]['copes'][$cope] = array(
+                        'cope' => $cope,
+                        'total_tac' => 0,
+                        'total_asignadas' => 0,
+                        'registradas' => 0,
+                        'faltantes' => 0,
+                        'folios_faltantes' => array()
+                    );
+                }
+                
+                $division_stats[$division]['total_tac']++;
+                $division_stats[$division]['copes'][$cope]['total_tac']++;
+            }
+            
+            // Procesar órdenes asignadas
+            foreach ($ordenes_asignadas as $orden) {
+                $area = !empty($orden['NOM_AREA']) ? trim($orden['NOM_AREA']) : 'Sin Área';
+                $division = !empty($orden['NOM_DIVISION']) ? trim($orden['NOM_DIVISION']) : 'Sin División';
+                $cope = !empty($orden['NOM_CT']) ? trim($orden['NOM_CT']) : 'SIN_COPE';
+                
+                // Inicializar la división si no existe
+                if (!isset($division_stats[$division])) {
+                    $division_stats[$division] = array(
+                        'division' => $division,
+                        'total_tac' => 0,
+                        'total_asignadas' => 0,
+                        'registradas' => 0,
+                        'faltantes' => 0,
+                        'folios_faltantes' => array(),
+                        'copes' => array()
+                    );
+                }
+
+                // Inicializar el COPE si no existe
+                if (!isset($division_stats[$division]['copes'][$cope])) {
+                    $division_stats[$division]['copes'][$cope] = array(
+                        'cope' => $cope,
+                        'total_tac' => 0,
+                        'total_asignadas' => 0,
+                        'registradas' => 0,
+                        'faltantes' => 0,
+                        'folios_faltantes' => array()
+                    );
+                }
+                
+                // Actualizar estadísticas
+                $division_stats[$division]['total_asignadas']++;
+                $division_stats[$division]['copes'][$cope]['total_asignadas']++;
+            }
+
+            // Obtener todos los folios únicos primero
+            $folios_unicos = [];
+            $ordenes_por_folio = [];
+            
+            foreach ($faltantes as $orden) {
+                $folio = strval($orden['Folio_Pisa']);
+                if (!in_array($folio, $folios_unicos)) {
+                    $folios_unicos[] = $folio;
+                }
+                $ordenes_por_folio[$folio] = $orden;
+            }
+            
+            // Obtener todos los técnicos en una sola consulta
+            $mapa_tecnicos = $this->obtenerMapaTecnicos($folios_unicos);
+            
+            // Procesar faltantes con los técnicos ya cargados
+            foreach ($faltantes as $orden) {
+                $area = !empty($orden['NOM_AREA']) ? $orden['NOM_AREA'] : 'Sin Área';
+                $division = !empty($orden['NOM_DIVISION']) ? $orden['NOM_DIVISION'] : 'Sin División';
+                $cope = !empty($orden['NOM_CT']) ? $orden['NOM_CT'] : 'SIN_COPE';
+                $folio = strval($orden['Folio_Pisa']);
+                
+                // Obtener técnico y expediente del mapa
+                $tecnico_map = isset($mapa_tecnicos[$folio]) ? $mapa_tecnicos[$folio] : array('tecnico' => 'Sin técnico', 'expediente' => '');
+                $tecnico_nombre = isset($tecnico_map['tecnico']) ? $tecnico_map['tecnico'] : 'Sin técnico';
+                $expediente_val = isset($tecnico_map['expediente']) ? $tecnico_map['expediente'] : '';
+                
+                // Actualizar faltantes por área
+                if (isset($areas_stats[$area])) {
+                    $areas_stats[$area]['faltantes']++;
+                }
+                
+                // Actualizar faltantes por división
+                if (isset($division_stats[$division])) {
+                    $division_stats[$division]['faltantes']++;
+                    $division_stats[$division]['folios_faltantes'][] = array(
+                        'folio' => $folio,
+                        'tecnico' => $tecnico_nombre,
+                        'expediente' => $expediente_val
+                    );
+                    
+                    if (isset($division_stats[$division]['copes'][$cope])) {
+                        $division_stats[$division]['copes'][$cope]['faltantes']++;
+                        $division_stats[$division]['copes'][$cope]['folios_faltantes'][] = array(
+                            'folio' => $folio,
+                            'tecnico' => $tecnico_nombre,
+                            'expediente' => $expediente_val
+                        );
+                    }
+                }
+            }
+            
+            // Calcular registradas y porcentajes para áreas
+            foreach ($areas_stats as $area => &$stats) {
+                $stats['registradas'] = $stats['total_tac'] - $stats['faltantes'];
+                $stats['porcentaje'] = $stats['total_tac'] > 0 ? 
+                    ($stats['registradas'] / $stats['total_tac'] * 100) : 0;
+            }
+            
+            // Calcular registradas y porcentajes para divisiones y copes
+            foreach ($division_stats as $division => &$stats) {
+                $stats['registradas'] = $stats['total_tac'] - $stats['faltantes'];
+                $stats['porcentaje'] = $stats['total_tac'] > 0 ? 
+                    ($stats['registradas'] / $stats['total_tac'] * 100) : 0;
+                
+                // Calcular para cada cope
+                foreach ($stats['copes'] as $cope => &$cope_stats) {
+                    $cope_stats['registradas'] = $cope_stats['total_tac'] - $cope_stats['faltantes'];
+                    $cope_stats['porcentaje'] = $cope_stats['total_tac'] > 0 ? 
+                        ($cope_stats['registradas'] / $cope_stats['total_tac'] * 100) : 0;
+                }
+                
+                // Convertir copes array asociativo a array indexado y ordenar por porcentaje
+                $stats['copes'] = array_values($stats['copes']);
+                usort($stats['copes'], function($a, $b) {
+                    return $b['porcentaje'] <=> $a['porcentaje'];
+                });
+            }
+            
+            // Ordenar áreas por porcentaje de cumplimiento (mayor a menor)
+            uasort($areas_stats, function($a, $b) {
+                return $b['porcentaje'] <=> $a['porcentaje'];
+            });
+            
+            // Ordenar divisiones por porcentaje de cumplimiento (mayor a menor)
+            uasort($division_stats, function($a, $b) {
+                return $b['porcentaje'] <=> $a['porcentaje'];
+            });
+            
+            // Retornar ambos conjuntos de estadísticas
+            return [
+                'areas' => array_values($areas_stats),
+                'divisiones' => array_values($division_stats)
+            ];
+            return array_values($division_stats);
+        }
+        
+        public function generarReporte($fecha_inicio, $fecha_fin = null, $tipo_analisis = 'diario') {
+            // Si no se proporciona fecha_fin, usar la misma fecha_inicio
+            if ($fecha_fin === null) {
+                $fecha_fin = $fecha_inicio;
+            }
+            
+            // Obtener datos de ambas bases
+            $ordenes_tac = $this->obtenerOrdenesTac($fecha_inicio, $fecha_fin);
+            $ordenes_asignadas_tac = $this->obtenerAsignadasTac($fecha_inicio, $fecha_fin);
+            $ordenes_coordiapp = $this->obtenerOrdenesCoordiapp();
+            
+            // Identificar faltantes
+            $faltantes = $this->identificarFaltantes($ordenes_tac, $ordenes_coordiapp);
+            
+            // Calcular estadísticas generales
+            $total_tac = count($ordenes_tac);
+            $total_faltantes = count($faltantes);
+            $total_registradas = $total_tac - $total_faltantes;
+            $porcentaje_cumplimiento = $total_tac > 0 ? ($total_registradas / $total_tac * 100) : 0;
+            
+            // Calcular estadísticas por área y división
+            $estadisticas_detalladas = $this->calcularEstadisticasPorArea($ordenes_tac, $ordenes_asignadas_tac, $faltantes);
+            
+            // Calcular días analizados
+            $inicio = new DateTime($fecha_inicio);
+            $fin = new DateTime($fecha_fin);
+            $diferencia = $inicio->diff($fin);
+            $dias_analizados = $diferencia->days + 1;
+            
+            // Estadísticas adicionales por rango
+            $estadisticas_por_fecha = array();
+            if ($tipo_analisis === 'rango' && $fecha_inicio !== $fecha_fin) {
+                $estadisticas_por_fecha = $this->calcularEstadisticasPorFecha($ordenes_tac, $ordenes_coordiapp, $fecha_inicio, $fecha_fin);
+            }
+            
+            $resultado = array(
+                'resumen' => array(
+                    'fecha_inicio' => $fecha_inicio,
+                    'fecha_fin' => $fecha_fin,
+                    'dias_analizados' => $dias_analizados,
+                    'tipo_analisis' => $tipo_analisis,
+                    'total_tac' => $total_tac,
+                    'total_registradas' => $total_registradas,
+                    'total_faltantes' => $total_faltantes,
+                    'porcentaje_cumplimiento' => $porcentaje_cumplimiento,
+                    'promedio_diario' => $dias_analizados > 0 ? round($total_tac / $dias_analizados, 1) : 0
+                ),
+                'areas' => $estadisticas_detalladas['areas'],
+                'divisiones' => $estadisticas_detalladas['divisiones'],
+                'estadisticas_por_fecha' => $estadisticas_por_fecha,
+                'ultima_actualizacion' => date('Y-m-d H:i:s')
+            );
+            
+            // Debug: Verificar la estructura de los datos antes de enviarlos
+            error_log("Estructura de folios_faltantes: " . print_r($estadisticas_detalladas['divisiones'][0]['folios_faltantes'], true));
+            
+            // Asegurarse de que los datos se envíen como JSON válido
+            return json_decode(json_encode($resultado), true);
+        }
+        
+        public function calcularEstadisticasPorFecha($ordenes_tac, $ordenes_coordiapp, $fecha_inicio, $fecha_fin) {
+            $estadisticas = array();
+            
+            // Crear set de folios en COORDIAPP
+            $coordiapp_folios = array();
+            foreach ($ordenes_coordiapp as $orden) {
+                $folio = $orden['Folio_Pisa'];
+                if (!empty($folio)) {
+                    $coordiapp_folios[strval($folio)] = true;
+                }
+            }
+            
+            // Agrupar órdenes TAC por fecha
+            $ordenes_por_fecha = array();
+            foreach ($ordenes_tac as $orden) {
+                $fecha = $orden['FECHA_LIQ'];
+                if (!isset($ordenes_por_fecha[$fecha])) {
+                    $ordenes_por_fecha[$fecha] = array();
+                }
+                $ordenes_por_fecha[$fecha][] = $orden;
+            }
+            
+            // Calcular estadísticas para cada fecha
+            foreach ($ordenes_por_fecha as $fecha => $ordenes_del_dia) {
+                $total_dia = count($ordenes_del_dia);
+                $faltantes_dia = 0;
+                
+                foreach ($ordenes_del_dia as $orden) {
+                    $folio = $orden['Folio_Pisa'];
+                    if (!empty($folio)) {
+                        $folio_str = strval($folio);
+                        if (!isset($coordiapp_folios[$folio_str])) {
+                            $faltantes_dia++;
+                        }
+                    }
+                }
+                
+                $registradas_dia = $total_dia - $faltantes_dia;
+                $porcentaje_dia = $total_dia > 0 ? ($registradas_dia / $total_dia * 100) : 0;
+                
+                $estadisticas[] = array(
+                    'fecha' => $fecha,
+                    'total_tac' => $total_dia,
+                    'registradas' => $registradas_dia,
+                    'faltantes' => $faltantes_dia,
+                    'porcentaje_cumplimiento' => $porcentaje_dia
+                );
+            }
+            
+            // Ordenar por fecha
+            usort($estadisticas, function($a, $b) {
+                return strcmp($a['fecha'], $b['fecha']);
+            });
+            
+            return $estadisticas;
+        }
+    }
+    
+    // Procesar la solicitud
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $fecha_inicio = isset($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : date('Y-m-d');
+        $fecha_fin = isset($_POST['fecha_fin']) ? $_POST['fecha_fin'] : $fecha_inicio;
+        $tipo_analisis = isset($_POST['tipo_analisis']) ? $_POST['tipo_analisis'] : 'diario';
+        
+        // Debug: Log de fechas recibidas
+        error_log("DashboardData.php - Fechas recibidas: inicio=$fecha_inicio, fin=$fecha_fin");
+        error_log("DashboardData.php - POST data: " . print_r($_POST, true));
+        
+        // Validar formato de fechas
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_inicio) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_fin)) {
+            throw new Exception("Formato de fecha inválido");
+        }
+        
+        // Validar que fecha_inicio no sea mayor que fecha_fin
+        if ($fecha_inicio > $fecha_fin) {
+            throw new Exception("La fecha de inicio no puede ser mayor que la fecha fin");
+        }
+        
+        // Validar que el rango no sea muy amplio (máximo 31 días)
+        $inicio = new DateTime($fecha_inicio);
+        $fin = new DateTime($fecha_fin);
+        $diferencia = $inicio->diff($fin);
+        if ($diferencia->days > 31) {
+            throw new Exception("El rango de fechas no puede ser mayor a 31 días");
+        }
+        
+        $dashboard = new DashboardCoordiapp();
+        $data = $dashboard->generarReporte($fecha_inicio, $fecha_fin, $tipo_analisis);
+        
+        echo json_encode(array(
+            'success' => true,
+            'data' => $data,
+            'message' => 'Datos obtenidos correctamente'
+        ));
+    } else {
+        throw new Exception("Método no permitido");
+    }
+    
+} catch (Exception $e) {
+    echo json_encode(array(
+        'success' => false,
+        'message' => $e->getMessage(),
+        'data' => null
+    ));
+}
+?>

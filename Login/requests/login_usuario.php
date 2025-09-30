@@ -16,8 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 	exit;
 }
 
-$usuario = filter_input(INPUT_POST, 'usuario', FILTER_SANITIZE_STRING);
-$password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
+$usuario = filter_input(INPUT_POST, 'usuario', FILTER_DEFAULT);
+$password = filter_input(INPUT_POST, 'password', FILTER_DEFAULT);
 
 if (empty($usuario) || empty($password)) {
 	ob_clean();

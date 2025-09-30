@@ -54,6 +54,92 @@ try {
             $this->idUsuario = $idUsuario;
         }
         
+        private function obtenerIdsCopesCoordinadorSafePlaceholders(array $ids): array {
+            if (empty($ids)) { return ['placeholders' => '', 'params' => []]; }
+            $ph = implode(',', array_fill(0, count($ids), '?'));
+            return ['placeholders' => $ph, 'params' => $ids];
+        }
+
+        private function obtenerRankingTecnicos($fecha_inicio, $fecha_fin) {
+            $idsCopes = $this->obtenerIdsCopesCoordinador();
+            if (empty($idsCopes)) { return []; }
+
+            $inBuild = $this->obtenerIdsCopesCoordinadorSafePlaceholders($idsCopes);
+            $placeholders = $inBuild['placeholders'];
+            $params = $inBuild['params'];
+
+            $sql = "
+                SELECT 
+                    TRIM(CONCAT(IFNULL(Nombre_T,''), ' ', IFNULL(Apellidos_T,''))) AS tecnico,
+                    IFNULL(NExpediente,'') AS expediente,
+                    TRIM(CONCAT(IFNULL(c.COPE,''))) AS cope,
+                    TRIM(CONCAT(IFNULL(Contratista,''),' ',IFNULL(apellido_paterno,''),' ',IFNULL(apellido_materno,''))) AS contratista,
+                    COUNT(*) AS total
+                FROM View_Detalle_Coordiapp_Completadas
+                LEFT JOIN copes c ON c.id = FK_Cope
+                WHERE DATE(Fecha_Coordiapp) BETWEEN ? AND ?
+                  AND FK_Cope IN ($placeholders)
+                GROUP BY expediente, tecnico, cope, contratista
+                ORDER BY total DESC
+            ";
+
+            $stmt = $this->conn_coordiapp->prepare($sql);
+            $bindParams = array_merge([$fecha_inicio, $fecha_fin], $params);
+            $stmt->execute($bindParams);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        private function obtenerRankingContratistas($fecha_inicio, $fecha_fin) {
+            $idsCopes = $this->obtenerIdsCopesCoordinador();
+            if (empty($idsCopes)) { return []; }
+
+            $inBuild = $this->obtenerIdsCopesCoordinadorSafePlaceholders($idsCopes);
+            $placeholders = $inBuild['placeholders'];
+            $params = $inBuild['params'];
+
+            $sql = "
+                SELECT 
+                    TRIM(CONCAT(IFNULL(Contratista,''),' ',IFNULL(apellido_paterno,''),' ',IFNULL(apellido_materno,''))) AS contratista,
+                    COUNT(*) AS total
+                FROM View_Detalle_Coordiapp_Completadas
+                WHERE DATE(Fecha_Coordiapp) BETWEEN ? AND ?
+                  AND FK_Cope IN ($placeholders)
+                GROUP BY Contratista, apellido_paterno, apellido_materno
+                ORDER BY total DESC
+            ";
+
+            $stmt = $this->conn_coordiapp->prepare($sql);
+            $bindParams = array_merge([$fecha_inicio, $fecha_fin], $params);
+            $stmt->execute($bindParams);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        private function obtenerRankingCopes($fecha_inicio, $fecha_fin) {
+            $idsCopes = $this->obtenerIdsCopesCoordinador();
+            if (empty($idsCopes)) { return []; }
+
+            $inBuild = $this->obtenerIdsCopesCoordinadorSafePlaceholders($idsCopes);
+            $placeholders = $inBuild['placeholders'];
+            $params = $inBuild['params'];
+
+            $sql = "
+                SELECT 
+                    TRIM(IFNULL(c.COPE,'')) AS cope,
+                    COUNT(*) AS total
+                FROM View_Detalle_Coordiapp_Completadas v
+                LEFT JOIN copes c ON c.id = v.FK_Cope
+                WHERE DATE(v.Fecha_Coordiapp) BETWEEN ? AND ?
+                  AND v.FK_Cope IN ($placeholders)
+                GROUP BY c.COPE
+                ORDER BY total DESC
+            ";
+
+            $stmt = $this->conn_coordiapp->prepare($sql);
+            $bindParams = array_merge([$fecha_inicio, $fecha_fin], $params);
+            $stmt->execute($bindParams);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        
         // Función para obtener los COPEs del coordinador
         private function obtenerCopesCoordinador() {
             if (!$this->idUsuario) {
@@ -514,6 +600,10 @@ try {
                 $estadisticas_por_fecha = $this->calcularEstadisticasPorFecha($ordenes_tac, $ordenes_coordiapp, $fecha_inicio, $fecha_fin);
             }
             
+            $ranking_tecnicos = $this->obtenerRankingTecnicos($fecha_inicio, $fecha_fin);
+            $ranking_contratistas = $this->obtenerRankingContratistas($fecha_inicio, $fecha_fin);
+            $ranking_copes = $this->obtenerRankingCopes($fecha_inicio, $fecha_fin);
+
             $resultado = array(
                 'resumen' => array(
                     'fecha_inicio' => $fecha_inicio,
@@ -529,6 +619,9 @@ try {
                 'copes' => $estadisticas_detalladas['copes'], // Cambiar de 'areas' a 'copes'
                 'divisiones' => $estadisticas_detalladas['divisiones'],
                 'estadisticas_por_fecha' => $estadisticas_por_fecha,
+                'ranking_tecnicos' => $ranking_tecnicos,
+                'ranking_contratistas' => $ranking_contratistas,
+                'ranking_copes' => $ranking_copes,
                 'ultima_actualizacion' => date('Y-m-d H:i:s')
             );
             

@@ -9,59 +9,58 @@ require_once $_SERVER['DOCUMENT_ROOT'] . "/PortalCoordinadores/Login/db/Auth.php
 
 header('Content-Type: application/json');
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-	http_response_code(405);
-	ob_clean();
-	echo json_encode(['success' => false, 'message' => 'Método no permitido']);
-	exit;
-}
-
-$usuario = filter_input(INPUT_POST, 'usuario', FILTER_DEFAULT);
-$password = filter_input(INPUT_POST, 'password', FILTER_DEFAULT);
-
-if (empty($usuario) || empty($password)) {
-	ob_clean();
-	echo json_encode(['success' => false, 'message' => 'El usuario y la contraseña son requeridos']);
-	exit;
-}
-
 try {
-	$start = microtime(true);
-	$auth = new Auth();
-	$user = $auth->autenticar($usuario, $password);
-    error_log('[LOGIN] Auth->autenticar ejecutado en ' . number_format((microtime(true)-$start)*1000,2) . 'ms');
-	if ($user) {
-		// Iniciar sesión y guardar usuario en $_SESSION
-		if (session_status() === PHP_SESSION_NONE) {
-			session_start();
-		}
-		$_SESSION['usuario'] = $user['usuario'];
-		$_SESSION['idusuarios_coordinadores'] = $user['idusuarios_coordinadores'];
-		ob_clean();
-		echo json_encode([
-			'success' => true,
-			'message' => 'Autenticación exitosa',
-			'redirect' => '../Dashboard/Dashboard.php'
-		]);
-	} else {
-		ob_clean();
-		echo json_encode(['success' => false, 'message' => 'Usuario o contraseña incorrectos']);
-	}
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        ob_clean();
+        echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+        exit;
+    }
+
+    $usuario = filter_input(INPUT_POST, 'usuario', FILTER_DEFAULT);
+    $password = filter_input(INPUT_POST, 'password', FILTER_DEFAULT);
+
+    if (empty($usuario) || empty($password)) {
+        ob_clean();
+        echo json_encode(['success' => false, 'message' => 'El usuario y la contraseña son requeridos']);
+        exit;
+    }
+
+    $start = microtime(true);
+    $auth = new Auth();
+    $user = $auth->autenticar($usuario, $password);
+    error_log('[LOGIN] Auth->autenticar ejecutado en ' . number_format((microtime(true) - $start) * 1000, 2) . 'ms');
+
+    if ($user) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['usuario'] = $user['usuario'];
+        $_SESSION['idusuarios_coordinadores'] = $user['idusuarios_coordinadores'];
+        ob_clean();
+        echo json_encode([
+            'success' => true,
+            'message' => 'Autenticación exitosa',
+            'redirect' => '../Dashboard/Dashboard.php'
+        ]);
+    } else {
+        ob_clean();
+        echo json_encode(['success' => false, 'message' => 'Usuario o contraseña incorrectos']);
+    }
 } catch (PDOException $e) {
-	http_response_code(400);
-	ob_clean();
-	echo json_encode([
-		'success' => false,
-		'message' => 'Error de base de datos: ' . $e->getMessage()
-	]);
+    http_response_code(500);
+    ob_clean();
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error de base de datos'
+    ]);
     error_log('[LOGIN] PDOException: ' . $e->getMessage());
 } catch (Exception $e) {
-	http_response_code(500);
-	ob_clean();
-	echo json_encode([
-		'success' => false,
-		'message' => 'Error interno del servidor'
-	]);
-	error_log('[LOGIN] Exception: ' . $e->getMessage());
+    http_response_code(500);
+    ob_clean();
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error interno del servidor'
+    ]);
+    error_log('[LOGIN] Exception: ' . $e->getMessage());
 }
-?>

@@ -1,7 +1,7 @@
 <?php
-// Deshabilitar la salida de errores a la página
+// Log detallado en servidor
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
+ini_set('display_errors', 0); // evitar HTML
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/error.log');
 
@@ -16,8 +16,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 	exit;
 }
 
-$usuario = filter_input(INPUT_POST, 'usuario', FILTER_SANITIZE_STRING);
-$password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
+$usuario = isset($_POST['usuario']) ? trim($_POST['usuario']) : '';
+$password = isset($_POST['password']) ? trim($_POST['password']) : '';
+error_log('[LOGIN] POST recibido: usuario=' . ($usuario !== '' ? $usuario : '(vacío)'));
 
 if (empty($usuario) || empty($password)) {
 	ob_clean();
@@ -26,8 +27,10 @@ if (empty($usuario) || empty($password)) {
 }
 
 try {
+	$start = microtime(true);
 	$auth = new Auth();
 	$user = $auth->autenticar($usuario, $password);
+    error_log('[LOGIN] Auth->autenticar ejecutado en ' . number_format((microtime(true)-$start)*1000,2) . 'ms');
 	if ($user) {
 		// Iniciar sesión y guardar usuario en $_SESSION
 		if (session_status() === PHP_SESSION_NONE) {
@@ -52,6 +55,7 @@ try {
 		'success' => false,
 		'message' => 'Error de base de datos: ' . $e->getMessage()
 	]);
+    error_log('[LOGIN] PDOException: ' . $e->getMessage());
 } catch (Exception $e) {
 	http_response_code(500);
 	ob_clean();
@@ -59,6 +63,6 @@ try {
 		'success' => false,
 		'message' => 'Error interno del servidor'
 	]);
-	error_log("Error en login_usuario.php: " . $e->getMessage());
+	error_log('[LOGIN] Exception: ' . $e->getMessage());
 }
 ?>

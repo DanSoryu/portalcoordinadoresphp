@@ -8,7 +8,7 @@
 					<span aria-hidden="true">&times;</span>
 				</button>
 			</div>
-			<form id="formLogout" method="POST">
+            <form id="formLogout" method="POST" action="../Login/requests/logout.php">
 				<div class="modal-body">
 					<p>¿Estás seguro que deseas cerrar sesión?</p>
 				</div>

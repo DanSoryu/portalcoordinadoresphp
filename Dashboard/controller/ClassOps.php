@@ -232,7 +232,7 @@
                     No_Serie_ONT = ? 
                     WHERE idtecnico_instalaciones_coordiapp = ?";
             
-            $statement = get_conexion()->prepare($query);
+            $statement = $this->get_conexion()->prepare($query);
             
             $statement->bindParam(1, $Folio_Pisa, PDO::PARAM_STR);
             $statement->bindParam(2, $Telefono, PDO::PARAM_STR);

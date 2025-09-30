@@ -5,7 +5,7 @@ if (!isset($_SESSION['usuario'])) {
     header('Location: ../Login/Login.php');
     exit();
 }
-
+ 
 $Usuario = $_SESSION['usuario'];
 ?>
 <!DOCTYPE html>
@@ -87,7 +87,7 @@ $Usuario = $_SESSION['usuario'];
                             </button>
                             <div class="dropdown-menu-custom" id="modulosMenu">
                                 <div class="dropdown-header-custom">Módulos</div>
-                                <a class="dropdown-item-custom" href="../../../index.php">
+                                <a class="dropdown-item-custom" href="./Dashboard.php">
                                     <i class="fas fa-cogs"></i> Operaciones
                                 </a>
                                 <a class="dropdown-item-custom" href="../../../AlmacenNuevo/index.php">

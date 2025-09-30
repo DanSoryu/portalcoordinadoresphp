@@ -23,12 +23,8 @@ if (!empty($copesData)) {
         }
     }
 }
-// Ahora obtener las órdenes solo si hay copes
-if (!empty($copes)) {
-    $ordenes = $ordenesObj->obtenerOrdenesPorCopes($copes);
-} else {
+// Ya no cargamos órdenes en servidor; DataTables las pedirá con paginación
     $ordenes = ['data' => []];
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -160,23 +156,94 @@ if (!empty($copes)) {
     <!-- Contenido principal -->
     <div class="main-content">
         <div class="container-fluid">
-            <?php include('vistas/components/preloader.php'); ?>
+            
             <h1 class="h3 mb-4 text-gray-800"><i class="fas fa-tasks"></i> Órdenes Coordinador</h1>
-            <!-- Input hidden para idUsuario JS -->
             <input type="hidden" id="idUsuario" value="<?php echo htmlspecialchars($_SESSION['idusuarios_coordinadores']); ?>">
+
+            <!-- Filtros -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-filter"></i> Filtros de Búsqueda
+                        </h6>
+                        <div>
+                            <button type="button" class="btn btn-primary mr-2" onclick="cargarOrdenesCoordinador()">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="limpiarFiltros()">
+                                <i class="fas fa-eraser"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div class="card-body">
-                    <!-- Bloque de depuración temporal -->
-                    <pre style="background:#f8f9fa;border:1px solid #ddd;padding:10px;max-height:300px;overflow:auto;">
-                    <?php
-                    echo "<b>Copes:</b> ";
-                    var_dump($copes);
-                    echo "\n<b>Ordenes:</b> ";
-                    var_dump($ordenes);
-                    ?>
-                    </pre>
+                    <form id="filtrosForm">
+                        <div class="row">
+                            <?php
+                                $currentDate = date('Y-m-d');
+                                $minDate = date('Y-m-d', strtotime('-2 years'));
+                                $startDate = date('Y-m-d', strtotime('-1 month'));
+                            ?>
+                            <div class="col-md-3">
+                                <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                                <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio"
+                                    value="<?php echo $startDate; ?>"
+                                    min="<?php echo $minDate; ?>"
+                                    max="<?php echo $currentDate; ?>">
+                                <span class="text-xs text-gray-500 mt-1 d-block">Máximo 2 años atrás</span>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                                <input type="date" class="form-control" id="fecha_fin" name="fecha_fin"
+                                    value="<?php echo $currentDate; ?>"
+                                    min="<?php echo $minDate; ?>"
+                                    max="<?php echo $currentDate; ?>">
+                                <span class="text-xs text-gray-500 mt-1 d-block">Máximo fecha actual</span>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="estatus" class="form-label">Estatus</label>
+                                <select class="form-control" id="estatus" name="estatus">
+                                    <option value="">Todos los estados</option>
+                                    <option value="COMPLETADA">Completada</option>
+                                    <option value="INCOMPLETA">Incompleta</option>
+                                    <option value="OBJETADA">Objetada</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="cope" class="form-label">COPE</label>
+                                <select class="form-control" id="cope" name="cope">
+                                    <?php if (!empty($copesData)): ?>
+                                        <option value="">Todos los COPEs</option>
+                                        <?php foreach ($copesData as $cope): ?>
+                                            <option value="<?php echo htmlspecialchars($cope['id']); ?>">
+                                                <?php echo htmlspecialchars($cope['COPE']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla de Resultados -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-table"></i> Órdenes Coordinador
+                    </h6>
+                    <div>
+                        <button class="btn btn-success btn-sm" onclick="exportarExcel()">
+                            <i class="fas fa-file-excel"></i> Exportar Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
                     <div class="table-responsive">
-                        <table id="tablaOrdenes" class="table table-striped table-bordered">
-                            <thead>
+                        <table id="tablaOrdenes" class="table table-bordered table-striped table-hover" style="width:100%">
+                            <thead class="thead-dark">
                                 <tr>
                                     <th>Folio Pisa</th>
                                     <th>Teléfono</th>
@@ -204,52 +271,7 @@ if (!empty($copes)) {
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                            <?php if (!empty($ordenes['data'])): ?>
-                                <?php foreach ($ordenes['data'] as $orden): ?>
-                                    <tr>
-                                        <td><span class="badge badge-info"><?= htmlspecialchars($orden['Folio_Pisa']) ?></span></td>
-                                        <td><?= htmlspecialchars($orden['Telefono']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Ont']) ?></td>
-                                        <td><?= htmlspecialchars($orden['NExpediente']) ?></td>
-                                        <td><?= htmlspecialchars($orden['nombre_completo_cliente']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Direccion_Cliente']) ?></td>
-                                        <td><?= htmlspecialchars($orden['nombre_completo_contratista']) ?></td>
-                                        <td><?= htmlspecialchars($orden['nombre_completo_tecnico']) ?></td>
-                                        <td><span class="badge badge-primary"><?= htmlspecialchars($orden['COPE']) ?></span></td>
-                                        <td><?= htmlspecialchars($orden['area']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Division']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Distrito']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Tecnologia']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Tipo_Tarea']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Tipo_Instalacion']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Metraje']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Terminal']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Puerto']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Step_Registro']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Latitud']) ?>, <?= htmlspecialchars($orden['Longitud']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Latitud_Terminal']) ?>, <?= htmlspecialchars($orden['Longitud_Terminal']) ?></td>
-                                        <td><?= htmlspecialchars($orden['Fecha_Coordiapp']) ?></td>
-                                        <td><span class="badge badge-<?= $orden['Estatus_Orden'] === 'Cerrada' ? 'success' : 'warning' ?>"><?= htmlspecialchars($orden['Estatus_Orden']) ?></span></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <div class="flex space-x-2">
-                                                <button onclick="viewMap(<?= htmlspecialchars(json_encode($orden), ENT_QUOTES, 'UTF-8') ?>)" class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100 transition-colors" title="Ver Mapa">
-                                                    <i class="fas fa-map-marker-alt"></i>
-                                                </button>
-                                                <button onclick="viewPhotos(<?= htmlspecialchars(json_encode($orden), ENT_QUOTES, 'UTF-8') ?>)" class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-100 transition-colors" title="Ver Fotos">
-                                                    <i class="fas fa-image"></i>
-                                                </button>
-                                                <button onclick="openPDF(<?= htmlspecialchars(json_encode($orden), ENT_QUOTES, 'UTF-8') ?>)" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100 transition-colors" title="Ver PDF">
-                                                    <i class="fas fa-file-pdf"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr><td colspan="24">No hay órdenes para mostrar.</td></tr>
-                            <?php endif; ?>
-                            </tbody>
+                            <tbody></tbody>
                         </table>
                     </div>
                 </div>
@@ -285,35 +307,35 @@ if (!empty($copes)) {
                                 <h6>Foto ONT</h6>
                                 <p class="text-muted small">Una fotografía de la parte frontal de la ONT</p>
                                 <div class="bg-light rounded p-2 text-center">
-                                    <img id="modalFotoOnt" src="" alt="Foto ONT" class="img-fluid rounded" onerror="this.src='https://via.placeholder.com/400x225?text=Sin+Imagen';">
+                                    <img id="modalFotoOnt" src="" alt="Foto ONT" class="img-fluid rounded">
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <h6>Foto Casa Cliente</h6>
                                 <p class="text-muted small">Una fotografía de la casa del cliente</p>
                                 <div class="bg-light rounded p-2 text-center">
-                                    <img id="modalFotoCasaCliente" src="" alt="Foto Casa Cliente" class="img-fluid rounded" onerror="this.src='https://via.placeholder.com/400x225?text=Sin+Imagen';">
+                                    <img id="modalFotoCasaCliente" src="" alt="Foto Casa Cliente" class="img-fluid rounded">
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <h6>No. Serie ONT</h6>
                                 <p class="text-muted small">Una fotografía de la parte trasera de la ONT</p>
                                 <div class="bg-light rounded p-2 text-center">
-                                    <img id="modalNoSerieONT" src="" alt="No. Serie ONT" class="img-fluid rounded" onerror="this.src='https://via.placeholder.com/400x225?text=Sin+Imagen';">
+                                    <img id="modalNoSerieONT" src="" alt="No. Serie ONT" class="img-fluid rounded">
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <h6>Foto Terminal</h6>
                                 <p class="text-muted small">Una fotografía de la terminal</p>
                                 <div class="bg-light rounded p-2 text-center">
-                                    <img id="modalFotoPuerto" src="" alt="Foto Puerto" class="img-fluid rounded" onerror="this.src='https://via.placeholder.com/400x225?text=Sin+Imagen';">
+                                    <img id="modalFotoPuerto" src="" alt="Foto Puerto" class="img-fluid rounded">
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <h6>Foto SO</h6>
                                 <p class="text-muted small">Una fotografía de la hoja de servicio</p>
                                 <div class="bg-light rounded p-2 text-center">
-                                    <img id="modalFotoINE" src="" alt="Foto INE" class="img-fluid rounded" onerror="this.src='https://via.placeholder.com/400x225?text=Sin+Imagen';">
+                                    <img id="modalFotoINE" src="" alt="Foto INE" class="img-fluid rounded">
                                 </div>
                             </div>
                         </div>
@@ -331,12 +353,31 @@ if (!empty($copes)) {
         <!-- Toastify -->
         <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
         <!-- Custom JS -->
-        <script src="vistas/assets/js/preloader.js"></script>
+        
         <script src="vistas/assets/js/toasts.js"></script>
         <script src="vistas/assets/js/notifications.js"></script>
-        <script src="vistas/assets/js/datatable_config.js"></script>
         <script src="vistas/assets/js/ordenes.js"></script>
+        <!-- Dependencias para exportación a Excel -->
+        <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+        <!-- ExcelJS y FileSaver para exportación -->
+        <script src="https://cdn.jsdelivr.net/npm/exceljs@4.5.0/dist/exceljs.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
         <script>
+        // Actualizar min y max dinámicamente en los inputs de fecha
+        $(document).ready(function() {
+            const $fechaInicio = $('#fecha_inicio');
+            const $fechaFin = $('#fecha_fin');
+            const minDate = $fechaInicio.attr('min');
+            const maxDate = $fechaInicio.attr('max');
+
+            $fechaInicio.on('change', function() {
+                $fechaFin.attr('min', this.value || minDate);
+            });
+            $fechaFin.on('change', function() {
+                $fechaInicio.attr('max', this.value || maxDate);
+            });
+        });
                 // Dropdown de módulos
                 document.getElementById('modulosDropdown').addEventListener('click', function(e) {
                         e.stopPropagation();
@@ -417,6 +458,327 @@ if (!empty($copes)) {
                         alert('No hay coordenadas disponibles para este registro');
                     }
                 }
+
+                async function exportarExcel() {
+                    const idUsuario = $('#idUsuario').val();
+                    const fecha_inicio = $('#fecha_inicio').val();
+                    const fecha_fin = $('#fecha_fin').val();
+                    const estatus = $('#estatus').val();
+                    const cope = $('#cope').val();
+
+                    // Cargar dependencias si no están presentes
+                    const loadScript = (src) => new Promise((resolve, reject) => {
+                        const s = document.createElement('script');
+                        s.src = src;
+                        s.onload = resolve;
+                        s.onerror = reject;
+                        document.head.appendChild(s);
+                    });
+                    if (typeof ExcelJS === 'undefined') {
+                        try { await loadScript('https://cdn.jsdelivr.net/npm/exceljs@4.5.0/dist/exceljs.min.js'); } catch(e) {}
+                    }
+                    if (typeof saveAs === 'undefined') {
+                        try { await loadScript('https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js'); } catch(e) {}
+                    }
+
+                    // Toast con barra de progreso
+                    let progress = 0;
+                    const toastNode = document.createElement('div');
+                    toastNode.style.minWidth = '280px';
+                    toastNode.innerHTML = `
+                        <div style="font-weight:600;margin-bottom:6px">Generando Excel...</div>
+                        <div style="background:#e5e7eb;border-radius:6px;overflow:hidden;height:10px">
+                            <div id="toastProgressBar" style="height:10px;width:0%;background:#2563eb;transition:width .2s ease"></div>
+                        </div>
+                        <div id="toastProgressPct" style="font-size:12px;margin-top:6px;color:#374151;text-align:right">0%</div>
+                    `;
+                    const progressToast = Toastify({ node: toastNode, duration: -1, gravity: 'top', position: 'right', close: true, stopOnFocus: false, style: { background: '#fff', color:'#111827', boxShadow:'0 10px 25px rgba(0,0,0,.15)' } });
+                    progressToast.showToast();
+                    const setProgress = (pct)=>{
+                        const bar = toastNode.querySelector('#toastProgressBar');
+                        const pctEl = toastNode.querySelector('#toastProgressPct');
+                        const val = Math.max(0, Math.min(100, Math.round(pct)));
+                        if (bar) bar.style.width = val + '%';
+                        if (pctEl) pctEl.textContent = val + '%';
+                    };
+                    setProgress(5);
+
+                    $.ajax({
+                        url: '../OrdenesCoordinador/requests/exportar_excel_ordenes.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            idUsuario: idUsuario,
+                            fecha_inicio: fecha_inicio,
+                            fecha_fin: fecha_fin,
+                            estatus: estatus || '',
+                            cope: cope || ''
+                        },
+                        success: async function(response) {
+                            if (!(response && response.success && Array.isArray(response.data) && response.data.length)) {
+                                if (typeof Toast !== 'undefined' && Toast.warning) { Toast.warning('No hay datos para exportar con los filtros seleccionados'); }
+                                progressToast.hideToast();
+                                return;
+                            }
+                            const datos = response.data;
+                            const total = datos.length;
+                                const wb = new ExcelJS.Workbook();
+                                const ws = wb.addWorksheet('Órdenes Coordinador');
+
+                                ws.columns = [
+                                    { header: 'Folio Pisa', key: 'Folio_Pisa', width: 15 },
+                                    { header: 'Teléfono', key: 'Telefono', width: 15 },
+                                    { header: 'ONT', key: 'Ont', width: 15 },
+                                    { header: 'N° Expediente', key: 'NExpediente', width: 15 },
+                                    { header: 'Cliente', key: 'nombre_completo_cliente', width: 25 },
+                                    { header: 'Dirección', key: 'Direccion_Cliente', width: 25 },
+                                    { header: 'Contratista', key: 'nombre_completo_contratista', width: 25 },
+                                    { header: 'Técnico', key: 'nombre_completo_tecnico', width: 25 },
+                                    { header: 'COPE', key: 'COPE', width: 10 },
+                                    { header: 'Área', key: 'area', width: 15 },
+                                    { header: 'División', key: 'Division', width: 15 },
+                                    { header: 'Distrito', key: 'Distrito', width: 15 },
+                                    { header: 'Tecnología', key: 'Tecnologia', width: 15 },
+                                    { header: 'Tipo Tarea', key: 'Tipo_Tarea', width: 15 },
+                                    { header: 'Tipo Instalación', key: 'Tipo_Instalacion', width: 15 },
+                                    { header: 'Metraje', key: 'Metraje', width: 10 },
+                                    { header: 'Terminal', key: 'Terminal', width: 10 },
+                                    { header: 'Puerto', key: 'Puerto', width: 10 },
+                                    { header: 'Paso', key: 'Step_Registro', width: 10 },
+                                { header: 'Coordenadas', key: 'LatLon', width: 20 },
+                                { header: 'Coord. Terminal', key: 'LatLon_Term', width: 20 },
+                                    { header: 'Fecha', key: 'Fecha_Coordiapp', width: 15 },
+                                { header: 'Estado', key: 'Estado', width: 15 }
+                            ];
+
+                            // Insertar filas en bloques para poder actualizar progreso y no bloquear UI
+                            const chunkSize = 500;
+                            for (let i = 0; i < total; i += chunkSize) {
+                                const slice = datos.slice(i, i + chunkSize);
+                                slice.forEach(orden => {
+                                    // Estado calculado como en la tabla
+                                    const est = (orden.Estatus_Orden || '').toString().toUpperCase();
+                                    const step = parseInt(orden.Step_Registro || 0, 10);
+                                    let estadoFinal = 'INCOMPLETA';
+                                    if (est === 'OBJETADA') estadoFinal = 'OBJETADA';
+                                    else if (step === 5) estadoFinal = 'COMPLETADA';
+
+                                    ws.addRow({
+                                        Folio_Pisa: orden.Folio_Pisa || '',
+                                        Telefono: orden.Telefono || '',
+                                        Ont: orden.Ont || '',
+                                        NExpediente: orden.NExpediente || '',
+                                        nombre_completo_cliente: orden.nombre_completo_cliente || '',
+                                        Direccion_Cliente: orden.Direccion_Cliente || '',
+                                        nombre_completo_contratista: orden.nombre_completo_contratista || '',
+                                        nombre_completo_tecnico: orden.nombre_completo_tecnico || '',
+                                        COPE: orden.COPE || '',
+                                        area: orden.area || '',
+                                        Division: orden.Division || '',
+                                        Distrito: orden.Distrito || '',
+                                        Tecnologia: orden.Tecnologia || '',
+                                        Tipo_Tarea: orden.Tipo_Tarea || '',
+                                        Tipo_Instalacion: orden.Tipo_Instalacion || '',
+                                        Metraje: orden.Metraje || '',
+                                        Terminal: orden.Terminal || '',
+                                        Puerto: orden.Puerto || '',
+                                        Step_Registro: orden.Step_Registro || '',
+                                        LatLon: (orden.Latitud || '') + ', ' + (orden.Longitud || ''),
+                                        LatLon_Term: (orden.Latitud_Terminal || '') + ', ' + (orden.Longitud_Terminal || ''),
+                                        Fecha_Coordiapp: orden.Fecha_Coordiapp || '',
+                                        Estado: estadoFinal
+                                    });
+                                });
+                                setProgress(5 + ((i + slice.length) / total) * 80); // hasta 85%
+                                await new Promise(r => setTimeout(r));
+                            }
+
+                            setProgress(90);
+                            const nombreArchivo = `OrdenesCoordinador_${fecha_inicio}_a_${fecha_fin}.xlsx`;
+                            const buffer = await wb.xlsx.writeBuffer();
+                            setProgress(98);
+                            saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nombreArchivo);
+                            setProgress(100);
+                            setTimeout(()=>{ progressToast.hideToast(); }, 700);
+                            if (typeof Toast !== 'undefined' && Toast.success) { Toast.success('Archivo exportado correctamente'); }
+                        },
+                        error: function(xhr) {
+                            if (typeof Toast !== 'undefined' && Toast.error) { Toast.error('Error al exportar el archivo'); }
+                            progressToast.hideToast();
+                        }
+                    });
+                }
+
+                // Inicialización DataTables con server-side processing
+                $(document).ready(function() {
+                    // Desactivar errores por defecto de DataTables y manejarlos manualmente
+                    $.fn.dataTable.ext.errMode = 'none';
+                    const tabla = $('#tablaOrdenes').DataTable({
+                        processing: true,
+                        serverSide: true,
+                        searching: false,
+                        language: {
+                            url: 'https://cdn.datatables.net/plug-ins/2.0.0/i18n/es-ES.json',
+                            processing: '',
+                            lengthMenu: 'Mostrar _MENU_ registros por página'
+                        },
+                        dom: '<"row mb-2"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 text-md-end"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                        pageLength: 25,
+                        ajax: {
+                            url: '../OrdenesCoordinador/requests/get_copes_ordenes.php',
+                            type: 'POST',
+                            data: function(d) {
+                                console.group('DT -> Preparando petición');
+                                console.log('draw:', d.draw, 'start:', d.start, 'length:', d.length);
+                                console.log('filtros actuales', {
+                                    idUsuario: $('#idUsuario').val(),
+                                    fecha_inicio: $('#fecha_inicio').val(),
+                                    fecha_fin: $('#fecha_fin').val(),
+                                    estatus: $('#estatus').val(),
+                                    cope: $('#cope').val()
+                                });
+                                console.groupEnd();
+                                d.idUsuario = $('#idUsuario').val();
+                                d.fecha_inicio = $('#fecha_inicio').val();
+                                d.fecha_fin = $('#fecha_fin').val();
+                                d.estatus = $('#estatus').val();
+                                d.cope = $('#cope').val();
+                            },
+                            beforeSend: function() {
+                                console.info('DT -> Enviando petición al servidor (get_copes_ordenes.php) ...');
+                                if (typeof Toast !== 'undefined' && Toast.info) {
+                                    Toast.info('Cargando datos...');
+                                }
+                            },
+                            complete: function(jqXHR) {
+                                try {
+                                    const resp = jqXHR.responseJSON || JSON.parse(jqXHR.responseText || '{}');
+                                    if (resp && resp.debug) {
+                                        console.group('DT <- Respuesta con debug');
+                                        console.log('debug:', resp.debug);
+                                        console.groupEnd();
+                                    } else {
+                                        console.debug('DT <- Respuesta recibida (sin campo debug)');
+                                    }
+                                } catch(e) {
+                                    console.warn('No se pudo parsear la respuesta para debug:', e);
+                                }
+                            },
+                            error: function(jqXHR, textStatus, errorThrown) {
+                                console.error('DT XHR Error:', { status: jqXHR.status, textStatus, errorThrown, response: jqXHR.responseText });
+                                if (typeof Toast !== 'undefined' && Toast.error) {
+                                    Toast.error('Error al cargar la tabla (' + (jqXHR.status || '0') + ')');
+                                }
+                            }
+                        },
+                        stateSave: true,
+                        columns: [
+                            { data: 'Folio_Pisa' },
+                            { data: 'Telefono' },
+                            { data: 'Ont' },
+                            { data: 'NExpediente' },
+                            { data: 'nombre_completo_cliente' },
+                            { data: 'Direccion_Cliente' },
+                            { data: 'nombre_completo_contratista' },
+                            { data: 'nombre_completo_tecnico' },
+                            { data: 'COPE' },
+                            { data: 'area' },
+                            { data: 'Division' },
+                            { data: 'Distrito' },
+                            { data: 'Tecnologia' },
+                            { data: 'Tipo_Tarea' },
+                            { data: 'Tipo_Instalacion' },
+                            { data: 'Metraje' },
+                            { data: 'Terminal' },
+                            { data: 'Puerto' },
+                            { data: 'Step_Registro' },
+                            { data: null, render: function(row){ return (row.Latitud || '') + ', ' + (row.Longitud || ''); } },
+                            { data: null, render: function(row){ return (row.Latitud_Terminal || '') + ', ' + (row.Longitud_Terminal || ''); } },
+                            { data: 'Fecha_Coordiapp' },
+                            { data: null, render: function(row){
+                                const estatus = (row.Estatus_Orden || '').toString().toUpperCase();
+                                const step = parseInt(row.Step_Registro || 0, 10);
+                                let label;
+                                if (estatus === 'OBJETADA') {
+                                    label = 'OBJETADA';
+                                } else if (step === 5) {
+                                    label = 'COMPLETADA';
+                                } else {
+                                    label = 'INCOMPLETA';
+                                }
+                                // Mapear a estilos de badge (Bootstrap 5.3)
+                                let cls = 'badge rounded-pill';
+                                if (label === 'COMPLETADA') {
+                                    cls += ' border border-success text-success bg-success-subtle';
+                                } else if (label === 'OBJETADA') {
+                                    cls += ' border border-danger text-danger bg-danger-subtle';
+                                } else {
+                                    cls += ' border border-warning text-warning bg-warning-subtle';
+                                }
+                                return '<span class="' + cls + '">' + label + '</span>';
+                            } },
+                            { data: null, orderable: false, render: function(row){
+                                const json = JSON.stringify(row).replace(/"/g, '&quot;');
+                                return `
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <button onclick="viewMap(\`${json}\`)" class="btn btn-icon btn-primary shadow-sm" title="Ver Mapa" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border: none;"><i class=\"fas fa-map-marker-alt\"></i></button>
+                                        <button onclick="viewPhotos(\`${json}\`)" class="btn btn-icon btn-success shadow-sm" title="Ver Fotos" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border: none;"><i class=\"fas fa-image\"></i></button>
+                                        <button onclick="openPDF(\`${json}\`)" class="btn btn-icon btn-danger shadow-sm" title="Ver PDF" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border: none;"><i class=\"fas fa-file-pdf\"></i></button>
+                                    </div>
+                                `;
+                            } }
+                        ],
+                        order: [[21, 'desc']],
+                        drawCallback: function(settings) {
+                            console.log('DT -> drawCallback', {
+                                page: this.api().page.info(),
+                                recordsTotal: settings._iRecordsTotal,
+                                recordsDisplay: settings._iRecordsDisplay
+                            });
+                            if (settings.json && settings.json.debug) {
+                                console.debug('DT -> debug (server):', settings.json.debug);
+                            }
+                        },
+                        initComplete: function(settings, json) {
+                            console.log('DT -> initComplete');
+                            if (json && json.debug) {
+                                console.debug('DT -> debug inicial (server):', json.debug);
+                            }
+                        }
+                    });
+
+                    // Capturar errores de DataTables
+                    $('#tablaOrdenes').on('error.dt', function(e, settings, techNote, message) {
+                        console.error('DataTables error:', message);
+                        Toastify({ text: 'Error de DataTables: ' + message, duration: 4000, gravity: 'top', position: 'right', backgroundColor: '#dc2626' }).showToast();
+                    });
+
+                    // Botones de filtros
+                    window.cargarOrdenesCoordinador = function(){
+                        if (typeof Toast !== 'undefined' && Toast.info) {
+                            Toast.info('Cargando datos con filtros...');
+                        }
+                        tabla.ajax.reload();
+                    };
+                    window.limpiarFiltros = function(){
+                        const $fechaInicio = $('#fecha_inicio');
+                        const $fechaFin = $('#fecha_fin');
+                        const hoy = $fechaInicio.attr('max');
+                        // Un mes atrás desde hoy
+                        const d = new Date(hoy);
+                        d.setMonth(d.getMonth() - 1);
+                        const unMesAtras = d.toISOString().slice(0,10);
+                        $fechaInicio.val(unMesAtras);
+                        $fechaFin.val(hoy);
+                        $('#estatus').val('');
+                        $('#cope').val('');
+                        if (typeof Toast !== 'undefined' && Toast.info) {
+                            Toast.info('Restableciendo filtros y cargando...');
+                        }
+                        tabla.ajax.reload();
+                    };
+                });
         </script>
 </body>
 </html>

@@ -29,7 +29,95 @@ try {
         }
     }
 
-    // Si no hay copes, devolver vacío
+    // Si la petición proviene de DataTables (server-side)
+    $isDataTables = isset($_POST['draw']) && isset($_POST['start']) && isset($_POST['length']);
+
+    if ($isDataTables) {
+        // Sin COPEs asignados => regresar estructura vacía para DataTables
+        if (empty($copes)) {
+            echo json_encode([
+                'draw' => intval($_POST['draw']),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'debug' => [
+                    'motivo' => 'sin_copes_para_usuario',
+                    'idUsuario' => $idUsuario
+                ]
+            ]);
+            exit;
+        }
+
+        $length = isset($_POST['length']) ? (int)$_POST['length'] : 20;
+        $start = isset($_POST['start']) ? (int)$_POST['start'] : 0;
+        $page = $length > 0 ? intval(floor($start / $length)) + 1 : 1;
+
+        // Filtros opcionales
+        $fechaInicio = !empty($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : null;
+        $fechaFin = !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null;
+        $estatus = isset($_POST['estatus']) && $_POST['estatus'] !== '' ? $_POST['estatus'] : null;
+        $copeFiltro = isset($_POST['cope']) && $_POST['cope'] !== '' ? $_POST['cope'] : null;
+
+        $copesFiltrados = $copes;
+        if ($copeFiltro !== null) {
+            // Si llega un COPE específico, filtrar la lista a ese único COPE si pertenece al usuario
+            $copeFiltroInt = (int)$copeFiltro;
+            if (in_array($copeFiltroInt, array_map('intval', $copes), true)) {
+                $copesFiltrados = [$copeFiltroInt];
+            } else {
+                // COPE no pertenece => devolver vacío
+                echo json_encode([
+                    'draw' => intval($_POST['draw']),
+                    'recordsTotal' => 0,
+                    'recordsFiltered' => 0,
+                    'data' => []
+                ]);
+                exit;
+            }
+        }
+
+        $resultado = $ordenesObj->obtenerOrdenesPorCopes($copesFiltrados, $fechaInicio, $fechaFin, $estatus, $length, $page);
+
+        if (isset($resultado['error']) && $resultado['error'] === true) {
+            echo json_encode([
+                'draw' => intval($_POST['draw']),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => $resultado['message']
+            ]);
+            exit;
+        }
+
+        echo json_encode([
+            'draw' => intval($_POST['draw']),
+            'recordsTotal' => isset($resultado['total']) ? (int)$resultado['total'] : 0,
+            'recordsFiltered' => isset($resultado['total']) ? (int)$resultado['total'] : 0,
+            'data' => isset($resultado['data']) ? $resultado['data'] : [],
+            'debug' => [
+                'params_recibidos' => [
+                    'draw' => intval($_POST['draw']),
+                    'start' => $start,
+                    'length' => $length,
+                    'page' => $page,
+                    'fecha_inicio' => $fechaInicio,
+                    'fecha_fin' => $fechaFin,
+                    'estatus' => $estatus,
+                    'cope' => $copeFiltro,
+                    'copes_filtrados' => $copesFiltrados
+                ],
+                'paginacion' => [
+                    'current_page' => $resultado['current_page'] ?? null,
+                    'per_page' => $resultado['per_page'] ?? null,
+                    'total' => $resultado['total'] ?? null,
+                    'last_page' => $resultado['last_page'] ?? null
+                ]
+            ]
+        ]);
+        exit;
+    }
+
+    // Caso legacy: respuesta simple (no DataTables)
     if (empty($copes)) {
         echo json_encode([
             'success' => true,
@@ -39,7 +127,6 @@ try {
         exit;
     }
 
-    // Obtener las órdenes por COPE
     $ordenes = $ordenesObj->obtenerOrdenesPorCopes($copes);
 
     echo json_encode([

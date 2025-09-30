@@ -242,7 +242,7 @@ if (!empty($copesData)) {
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table id="tablaOrdenes" class="table table-bordered table-striped table-hover" style="width:100%">
+                        <table id="tablaOrdenes" class="table table-bordered table-striped" style="width:100%">
                             <thead class="thead-dark">
                                 <tr>
                                     <th>Folio Pisa</th>
@@ -613,10 +613,12 @@ if (!empty($copesData)) {
                 $(document).ready(function() {
                     // Desactivar errores por defecto de DataTables y manejarlos manualmente
                     $.fn.dataTable.ext.errMode = 'none';
-                    const tabla = $('#tablaOrdenes').DataTable({
+                        const tabla = $('#tablaOrdenes').DataTable({
                         processing: true,
                         serverSide: true,
                         searching: false,
+                            responsive: true,
+                            scrollX: true,
                         language: {
                             url: 'https://cdn.datatables.net/plug-ins/2.0.0/i18n/es-ES.json',
                             processing: '',

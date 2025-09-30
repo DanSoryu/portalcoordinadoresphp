@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 
 ini_set('display_errors', 1);
@@ -45,10 +46,48 @@ try {
         
         private $conn_coordiapp;
         private $conn_tac;
+        private $idUsuario;
         
-        public function __construct() {
+        public function __construct($idUsuario = null) {
             $this->conn_coordiapp = DatabaseConnections::conectarCoordiapp();
             $this->conn_tac = DatabaseConnections::conectarTac();
+            $this->idUsuario = $idUsuario;
+        }
+        
+        // Función para obtener los COPEs del coordinador
+        private function obtenerCopesCoordinador() {
+            if (!$this->idUsuario) {
+                return array(); // Si no hay usuario, retornar array vacío
+            }
+            
+            try {
+                $query = "SELECT c.id, c.COPE 
+                         FROM copes c 
+                         INNER JOIN coordinador_cope cc ON c.id = cc.FK_Cope 
+                         WHERE cc.FK_Coordinador = :idCoordinador 
+                         ORDER BY c.COPE";
+                
+                $stmt = $this->conn_coordiapp->prepare($query);
+                $stmt->bindParam(':idCoordinador', $this->idUsuario);
+                $stmt->execute();
+                
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log("Error obteniendo COPEs del coordinador: " . $e->getMessage());
+                return array();
+            }
+        }
+        
+        // Función para obtener los IDs de COPEs del coordinador
+        private function obtenerIdsCopesCoordinador() {
+            $copes = $this->obtenerCopesCoordinador();
+            return array_column($copes, 'id');
+        }
+        
+        // Función para obtener los nombres de COPEs del coordinador
+        private function obtenerNombresCopesCoordinador() {
+            $copes = $this->obtenerCopesCoordinador();
+            return array_column($copes, 'COPE');
         }
 
         private function obtenerMapaTecnicos($folios) {
@@ -99,6 +138,18 @@ try {
                 $fecha_fin = $fecha_inicio;
             }
             
+            // Obtener los nombres de COPEs del coordinador
+            $copesCoordinador = $this->obtenerNombresCopesCoordinador();
+            
+            // Si no hay COPEs asignados, retornar array vacío
+            if (empty($copesCoordinador)) {
+                error_log("No hay COPEs asignados al coordinador ID: " . $this->idUsuario);
+                return array();
+            }
+            
+            // Crear placeholders para los COPEs
+            $placeholders = str_repeat('?,', count($copesCoordinador) - 1) . '?';
+            
             $query = "
                 SELECT 
                     Folio_Pisa,
@@ -108,20 +159,27 @@ try {
                     NOM_CT,
                     DATE(FECHA_LIQ) as FECHA_LIQ
                 FROM qm_tac_prod_bolsa 
-                WHERE DATE(FECHA_LIQ) BETWEEN :fecha_inicio AND :fecha_fin
+                WHERE DATE(FECHA_LIQ) BETWEEN ? AND ?
                 AND Calificador_Edo = 'COMPLETADA'
+                AND NOM_CT IN ($placeholders)
                 ORDER BY FECHA_LIQ DESC, NOM_DIVISION, NOM_CT
             ";
             
             $stmt = $this->conn_tac->prepare($query);
-            $stmt->bindParam(':fecha_inicio', $fecha_inicio);
-            $stmt->bindParam(':fecha_fin', $fecha_fin);
+            $stmt->bindParam(1, $fecha_inicio);
+            $stmt->bindParam(2, $fecha_fin);
+            
+            // Bind de los COPEs
+            for ($i = 0; $i < count($copesCoordinador); $i++) {
+                $stmt->bindParam(3 + $i, $copesCoordinador[$i]);
+            }
+            
             $stmt->execute();
             
             $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Debug: Log de consulta TAC
-            error_log("TAC Query - Fechas: $fecha_inicio a $fecha_fin, Registros encontrados: " . count($result));
+            error_log("TAC Query - Fechas: $fecha_inicio a $fecha_fin, COPEs: " . implode(',', $copesCoordinador) . ", Registros encontrados: " . count($result));
             
             return $result;
         }
@@ -132,6 +190,18 @@ try {
                 $fecha_fin = $fecha_inicio;
             }
             
+            // Obtener los nombres de COPEs del coordinador
+            $copesCoordinador = $this->obtenerNombresCopesCoordinador();
+            
+            // Si no hay COPEs asignados, retornar array vacío
+            if (empty($copesCoordinador)) {
+                error_log("No hay COPEs asignados al coordinador ID: " . $this->idUsuario);
+                return array();
+            }
+            
+            // Crear placeholders para los COPEs
+            $placeholders = str_repeat('?,', count($copesCoordinador) - 1) . '?';
+            
             $query = "
                 SELECT 
                     Folio_Pisa,
@@ -141,34 +211,60 @@ try {
                     NOM_CT,
                     DATE(FECHA_LIQ) as FECHA_LIQ
                 FROM qm_tac_prod_bolsa 
-                WHERE DATE(FECHA_LIQ) BETWEEN :fecha_inicio AND :fecha_fin
+                WHERE DATE(FECHA_LIQ) BETWEEN ? AND ?
                 AND Calificador_Edo = 'ASIGNADA'
+                AND NOM_CT IN ($placeholders)
                 ORDER BY FECHA_LIQ DESC, NOM_DIVISION, NOM_CT
             ";
             
             $stmt = $this->conn_tac->prepare($query);
-            $stmt->bindParam(':fecha_inicio', $fecha_inicio);
-            $stmt->bindParam(':fecha_fin', $fecha_fin);
+            $stmt->bindParam(1, $fecha_inicio);
+            $stmt->bindParam(2, $fecha_fin);
+            
+            // Bind de los COPEs
+            for ($i = 0; $i < count($copesCoordinador); $i++) {
+                $stmt->bindParam(3 + $i, $copesCoordinador[$i]);
+            }
+            
             $stmt->execute();
             
             $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Debug: Log de consulta TAC
-            error_log("TAC Query - Fechas: $fecha_inicio a $fecha_fin, Registros encontrados: " . count($result));
+            error_log("TAC Query Asignadas - Fechas: $fecha_inicio a $fecha_fin, COPEs: " . implode(',', $copesCoordinador) . ", Registros encontrados: " . count($result));
             
             return $result;
         }
         
         public function obtenerOrdenesCoordiapp() {
+            // Obtener los IDs de COPEs del coordinador
+            $idsCopesCoordinador = $this->obtenerIdsCopesCoordinador();
+            
+            // Si no hay COPEs asignados, retornar array vacío
+            if (empty($idsCopesCoordinador)) {
+                error_log("No hay COPEs asignados al coordinador ID: " . $this->idUsuario);
+                return array();
+            }
+            
+            // Crear placeholders para los IDs de COPEs
+            $placeholders = str_repeat('?,', count($idsCopesCoordinador) - 1) . '?';
+            
             $query = "
                 SELECT 
                     Folio_Pisa,
                     Fecha_Coordiapp
                 FROM tecnico_instalaciones_coordiapp
+                WHERE FK_Cope IN ($placeholders)
                 ORDER BY Fecha_Coordiapp DESC
             ";
             
             $stmt = $this->conn_coordiapp->prepare($query);
+            
+            // Bind de los IDs de COPEs
+            for ($i = 0; $i < count($idsCopesCoordinador); $i++) {
+                $stmt->bindParam($i + 1, $idsCopesCoordinador[$i], PDO::PARAM_INT);
+            }
+            
             $stmt->execute();
             
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -200,10 +296,10 @@ try {
         }
         
         public function calcularEstadisticasPorArea($ordenes_tac, $ordenes_asignadas, $faltantes) {
-            $areas_stats = array();
+            $copes_stats = array(); // Cambiar de areas_stats a copes_stats
             $division_stats = array();
             
-            // Inicializar estadísticas por área y división
+            // Inicializar estadísticas por COPE y división
             foreach ($ordenes_tac as $orden) {
                 $area = !empty($orden['NOM_AREA']) ? trim($orden['NOM_AREA']) : 'Sin Área';
                 $division = !empty($orden['NOM_DIVISION']) ? trim($orden['NOM_DIVISION']) : 'Sin División';
@@ -212,16 +308,16 @@ try {
                 // Debug para ver qué valores estamos recibiendo
                 error_log("División recibida: " . print_r($orden['NOM_DIVISION'], true));
                 
-                // Estadísticas por área para las gráficas
-                if (!isset($areas_stats[$area])) {
-                    $areas_stats[$area] = array(
-                        'area' => $area,
+                // Estadísticas por COPE para las gráficas (en lugar de área)
+                if (!isset($copes_stats[$cope])) {
+                    $copes_stats[$cope] = array(
+                        'cope' => $cope, // Cambiar de 'area' a 'cope'
                         'total_tac' => 0,
                         'registradas' => 0,
                         'faltantes' => 0
                     );
                 }
-                $areas_stats[$area]['total_tac']++;
+                $copes_stats[$cope]['total_tac']++;
                 
                 // Estadísticas por división para el detalle
                 if (!isset($division_stats[$division])) {
@@ -314,9 +410,9 @@ try {
                 $tecnico_nombre = isset($tecnico_map['tecnico']) ? $tecnico_map['tecnico'] : 'Sin técnico';
                 $expediente_val = isset($tecnico_map['expediente']) ? $tecnico_map['expediente'] : '';
                 
-                // Actualizar faltantes por área
-                if (isset($areas_stats[$area])) {
-                    $areas_stats[$area]['faltantes']++;
+                // Actualizar faltantes por COPE (en lugar de área)
+                if (isset($copes_stats[$cope])) {
+                    $copes_stats[$cope]['faltantes']++;
                 }
                 
                 // Actualizar faltantes por división
@@ -339,8 +435,8 @@ try {
                 }
             }
             
-            // Calcular registradas y porcentajes para áreas
-            foreach ($areas_stats as $area => &$stats) {
+            // Calcular registradas y porcentajes para COPEs
+            foreach ($copes_stats as $cope => &$stats) {
                 $stats['registradas'] = $stats['total_tac'] - $stats['faltantes'];
                 $stats['porcentaje'] = $stats['total_tac'] > 0 ? 
                     ($stats['registradas'] / $stats['total_tac'] * 100) : 0;
@@ -366,8 +462,8 @@ try {
                 });
             }
             
-            // Ordenar áreas por porcentaje de cumplimiento (mayor a menor)
-            uasort($areas_stats, function($a, $b) {
+            // Ordenar COPEs por porcentaje de cumplimiento (mayor a menor)
+            uasort($copes_stats, function($a, $b) {
                 return $b['porcentaje'] <=> $a['porcentaje'];
             });
             
@@ -376,12 +472,11 @@ try {
                 return $b['porcentaje'] <=> $a['porcentaje'];
             });
             
-            // Retornar ambos conjuntos de estadísticas
+            // Retornar ambos conjuntos de estadísticas (copes en lugar de areas)
             return [
-                'areas' => array_values($areas_stats),
+                'copes' => array_values($copes_stats), // Cambiar de 'areas' a 'copes'
                 'divisiones' => array_values($division_stats)
             ];
-            return array_values($division_stats);
         }
         
         public function generarReporte($fecha_inicio, $fecha_fin = null, $tipo_analisis = 'diario') {
@@ -431,7 +526,7 @@ try {
                     'porcentaje_cumplimiento' => $porcentaje_cumplimiento,
                     'promedio_diario' => $dias_analizados > 0 ? round($total_tac / $dias_analizados, 1) : 0
                 ),
-                'areas' => $estadisticas_detalladas['areas'],
+                'copes' => $estadisticas_detalladas['copes'], // Cambiar de 'areas' a 'copes'
                 'divisiones' => $estadisticas_detalladas['divisiones'],
                 'estadisticas_por_fecha' => $estadisticas_por_fecha,
                 'ultima_actualizacion' => date('Y-m-d H:i:s')
@@ -530,7 +625,10 @@ try {
             throw new Exception("El rango de fechas no puede ser mayor a 31 días");
         }
         
-        $dashboard = new DashboardCoordiapp();
+        // Obtener el ID del usuario de la sesión
+        $idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuarios_coordinadores'] : null;
+        
+        $dashboard = new DashboardCoordiapp($idUsuario);
         $data = $dashboard->generarReporte($fecha_inicio, $fecha_fin, $tipo_analisis);
         
         echo json_encode(array(

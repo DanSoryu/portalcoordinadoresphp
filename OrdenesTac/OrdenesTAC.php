@@ -24,8 +24,8 @@ $idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuario
     <!-- Custom styles for this template -->
     <link href="/Operaciones/css/sb-admin-2.min.css" rel="stylesheet">
     <!-- Custom styles for this page -->
-    <link href="https://cdn.datatables.net/v/dt/dt-2.2.2/datatables.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome -->
     <script src="https://kit.fontawesome.com/b5137b0dd6.js" crossorigin="anonymous"></script>
     <!-- Toastify -->
@@ -141,21 +141,381 @@ $idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuario
     </header>
 
     <?php include('../Login/vistas/components/Logout.php'); ?>
-    <!-- jQuery primero -->
-    <script src="/Operaciones/vendor/jquery/jquery.min.js"></script>
-    <!-- Bootstrap core JavaScript (Bootstrap 4 for sb-admin-2)-->
-    <script src="/Operaciones/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <!-- Core plugin JavaScript-->
-    <script src="/Operaciones/vendor/jquery-easing/jquery.easing.min.js"></script>
-    <!-- Custom scripts for all pages-->
-    <script src="/Operaciones/js/sb-admin-2.min.js"></script>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <!-- Page Heading -->
+            <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-file-invoice text-primary"></i> Órdenes TAC
+                    </h1>
+                    <p class="text-muted mb-0">Consulta de órdenes TAC filtradas por tus COPEs asignados</p>
+                </div>
+            </div>
+            
+            <!-- Filtros -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-filter"></i> Filtros de Búsqueda
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form id="filtrosForm">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                                <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                                       value="<?php echo date('Y-m-d'); ?>">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                                <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" 
+                                       value="<?php echo date('Y-m-d'); ?>">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="estatus" class="form-label">Estatus</label>
+                                <select class="form-control" id="estatus" name="estatus">
+                                    <option value="">Todos</option>
+                                    <option value="COMPLETADA">Completada</option>
+                                    <option value="ASIGNADA">Asignada</option>
+                                    <option value="EN_PROCESO">En Proceso</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="button" class="btn btn-primary mr-2" onclick="cargarOrdenesTAC()">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="limpiarFiltros()">
+                                    <i class="fas fa-eraser"></i> Limpiar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Tabla de Resultados -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-table"></i> Órdenes TAC
+                    </h6>
+                    <div>
+                        <button class="btn btn-success btn-sm" onclick="exportarExcel()">
+                            <i class="fas fa-file-excel"></i> Exportar Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="tablaOrdenesTAC" class="table table-bordered table-striped" style="width:100%">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Folio Pisa</th>
+                                    <th>Teléfono</th>
+                                    <th>Expediente</th>
+                                    <th>Técnico</th>
+                                    <th>COPE</th>
+                                    <th>Área</th>
+                                    <th>División</th>
+                                    <th>Distrito</th>
+                                    <th>Tecnología</th>
+                                    <th>Tipo Tarea</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Los datos se cargarán dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery desde CDN (más confiable) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap core JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- DataTables -->
-    <script src="https://cdn.datatables.net/v/dt/dt-2.2.2/datatables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
     <!-- Toastify -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <!-- Custom JS -->
-    <script src="vistas/assets/js/preloader.js"></script>
-    <script src="vistas/assets/js/toasts.js"></script>
-    <script src="vistas/assets/js/notifications.js"></script>
+    <!-- ExcelJS + FileSaver para exporte -->
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    
+    <script>
+        let tablaOrdenesTAC = null;
+        let datosOrdenes = [];
+        
+        // Verificar que jQuery esté cargado
+        function verificarJQuery() {
+            if (typeof jQuery === 'undefined') {
+                console.error('jQuery no está cargado');
+                setTimeout(verificarJQuery, 100);
+                return;
+            }
+            console.log('jQuery cargado correctamente');
+            inicializarAplicacion();
+        }
+        
+        function inicializarAplicacion() {
+            $(document).ready(function() {
+                console.log('Documento listo, inicializando aplicación');
+                // Inicializar DataTable
+                inicializarTabla();
+                
+                // Cargar datos iniciales
+                cargarOrdenesTAC();
+            });
+        }
+        
+        // Iniciar verificación cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', verificarJQuery);
+        } else {
+            verificarJQuery();
+        }
+        
+        function inicializarTabla() {
+            if (tablaOrdenesTAC) {
+                tablaOrdenesTAC.destroy();
+            }
+            
+            tablaOrdenesTAC = $('#tablaOrdenesTAC').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json"
+                },
+                "pageLength": 25,
+                "order": [[10, "desc"]], // Ordenar por fecha descendente
+                "columnDefs": [
+                    { "orderable": false, "targets": [] }
+                ],
+                "responsive": true,
+                "scrollX": true
+            });
+        }
+        
+        function cargarOrdenesTAC() {
+            console.log('Iniciando carga de órdenes TAC');
+            const fechaInicio = $('#fecha_inicio').val();
+            const fechaFin = $('#fecha_fin').val();
+            const estatus = $('#estatus').val();
+            
+            console.log('Fechas:', fechaInicio, fechaFin, 'Estatus:', estatus);
+            
+            // Validar fechas
+            if (!fechaInicio || !fechaFin) {
+                mostrarAlerta('warning', 'Por favor selecciona ambas fechas');
+                return;
+            }
+            
+            if (fechaInicio > fechaFin) {
+                mostrarAlerta('warning', 'La fecha de inicio no puede ser mayor que la fecha fin');
+                return;
+            }
+            
+            // Mostrar loading
+            $('#tablaOrdenesTAC tbody').html(`
+                <tr>
+                    <td colspan="11" class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando órdenes TAC...</p>
+                    </td>
+                </tr>
+            `);
+            
+            console.log('Enviando petición AJAX...');
+            $.ajax({
+                url: 'requests/obtener_ordenes_tac.php',
+                type: 'POST',
+                data: {
+                    fecha_inicio: fechaInicio,
+                    fecha_fin: fechaFin,
+                    estatus: estatus
+                },
+                dataType: 'json',
+                success: function(response) {
+                    console.log('Respuesta recibida:', response);
+                    if (response.success) {
+                        console.log('Datos recibidos:', response.data);
+                        mostrarOrdenes(response.data);
+                        datosOrdenes = response.data; // Guardar para exportación
+                        mostrarAlerta('success', `Se encontraron ${response.data.length} órdenes TAC`);
+                    } else {
+                        console.error('Error en respuesta:', response.message);
+                        mostrarAlerta('danger', 'Error: ' + response.message);
+                        $('#tablaOrdenesTAC tbody').html(`
+                            <tr>
+                                <td colspan="11" class="text-center text-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> ${response.message}
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error AJAX completo:', {
+                        status: status,
+                        error: error,
+                        responseText: xhr.responseText,
+                        statusCode: xhr.status
+                    });
+                    mostrarAlerta('danger', 'Error al cargar las órdenes TAC');
+                    $('#tablaOrdenesTAC tbody').html(`
+                        <tr>
+                            <td colspan="11" class="text-center text-danger">
+                                <i class="fas fa-exclamation-triangle"></i> Error al cargar los datos
+                            </td>
+                        </tr>
+                    `);
+                }
+            });
+        }
+        
+        function mostrarOrdenes(ordenes) {
+            if (tablaOrdenesTAC) {
+                tablaOrdenesTAC.clear();
+                
+                if (ordenes && ordenes.length > 0) {
+                    ordenes.forEach(function(orden) {
+                        tablaOrdenesTAC.row.add([
+                            orden.Folio_Pisa || '',
+                            orden.TELEFONO || '',
+                            orden.Expediente || '',
+                            orden.Tecnico || '',
+                            orden.NOM_CT || '',
+                            orden.NOM_AREA || '',
+                            orden.NOM_DIVISION || '',
+                            orden.Distrito || '',
+                            orden.TECNOLOGIA || '',
+                            orden.Tipo_tarea || '',
+                            orden.FECHA_LIQ || ''
+                        ]);
+                    });
+                } else {
+                    tablaOrdenesTAC.row.add([
+                        '', '', '', '', '', '', '', '', '', '', 'No se encontraron órdenes'
+                    ]);
+                }
+                
+                tablaOrdenesTAC.draw();
+            }
+        }
+        
+        function limpiarFiltros() {
+            $('#fecha_inicio').val('<?php echo date('Y-m-d'); ?>');
+            $('#fecha_fin').val('<?php echo date('Y-m-d'); ?>');
+            $('#estatus').val('');
+            cargarOrdenesTAC();
+            mostrarAlerta('info', 'Filtros restablecidos');
+        }
+        
+        function exportarExcel() {
+            if (!datosOrdenes || datosOrdenes.length === 0) {
+                mostrarAlerta('warning', 'No hay datos para exportar');
+                return;
+            }
+            
+            try {
+                const wb = new ExcelJS.Workbook();
+                const ws = wb.addWorksheet('Órdenes TAC');
+                
+                // Definir columnas
+                ws.columns = [
+                    { key: 'Folio_Pisa', width: 15 },
+                    { key: 'TELEFONO', width: 15 },
+                    { key: 'Expediente', width: 15 },
+                    { key: 'Tecnico', width: 25 },
+                    { key: 'NOM_CT', width: 15 },
+                    { key: 'NOM_AREA', width: 20 },
+                    { key: 'NOM_DIVISION', width: 20 },
+                    { key: 'Distrito', width: 15 },
+                    { key: 'TECNOLOGIA', width: 15 },
+                    { key: 'Tipo_tarea', width: 20 },
+                    { key: 'FECHA_LIQ', width: 15 }
+                ];
+                
+                // Agregar encabezados
+                ws.addRow([
+                    'Folio Pisa', 'Teléfono', 'Expediente', 'Técnico', 'COPE', 
+                    'Área', 'División', 'Distrito', 'Tecnología', 'Tipo Tarea', 'Fecha'
+                ]);
+                
+                // Estilizar encabezados
+                const headerRow = ws.getRow(1);
+                headerRow.font = { bold: true };
+                headerRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF264653' }
+                };
+                headerRow.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+                
+                // Agregar datos
+                datosOrdenes.forEach(orden => {
+                    ws.addRow([
+                        orden.Folio_Pisa || '',
+                        orden.TELEFONO || '',
+                        orden.Expediente || '',
+                        orden.Tecnico || '',
+                        orden.NOM_CT || '',
+                        orden.NOM_AREA || '',
+                        orden.NOM_DIVISION || '',
+                        orden.Distrito || '',
+                        orden.TECNOLOGIA || '',
+                        orden.Tipo_tarea || '',
+                        orden.FECHA_LIQ || ''
+                    ]);
+                });
+                
+                // Generar nombre del archivo
+                const fechaInicio = $('#fecha_inicio').val();
+                const fechaFin = $('#fecha_fin').val();
+                const nombreArchivo = `OrdenesTAC_${fechaInicio}_a_${fechaFin}.xlsx`;
+                
+                // Descargar archivo
+                wb.xlsx.writeBuffer().then(function(buffer) {
+                    saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nombreArchivo);
+                    mostrarAlerta('success', 'Archivo exportado correctamente');
+                });
+                
+            } catch (error) {
+                console.error('Error al exportar:', error);
+                mostrarAlerta('danger', 'Error al exportar el archivo');
+            }
+        }
+        
+        function mostrarAlerta(tipo, mensaje) {
+            const alertHtml = `
+                <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'danger' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                    ${mensaje}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            `;
+            
+            // Remover alertas anteriores
+            $('.alert').remove();
+            
+            // Agregar nueva alerta
+            $('.main-content .container-fluid').prepend(alertHtml);
+            
+            // Auto-hide después de 5 segundos
+            setTimeout(() => {
+                $('.alert').fadeOut();
+            }, 5000);
+        }
+    </script>
 </body>
 </html>

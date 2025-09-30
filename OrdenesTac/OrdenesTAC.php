@@ -253,6 +253,32 @@ $idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuario
     <script>
         let tablaOrdenesTAC = null;
         let datosOrdenes = [];
+
+        // Dropdown de módulos
+        document.getElementById('modulosDropdown').addEventListener('click', function(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('modulosMenu');
+        const chevron = this.querySelector('.chevron-icon');
+        menu.classList.toggle('show');
+        chevron.classList.toggle('rotate');
+        });
+        // Menú de usuario
+        document.getElementById('userMenuButton').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('userDropdownMenu');
+            const chevron = this.querySelector('.chevron-icon');
+            menu.classList.toggle('show');
+            chevron.classList.toggle('rotate');
+        });
+        // Cerrar dropdowns al hacer clic fuera
+        document.addEventListener('click', function() {
+            document.querySelectorAll('.dropdown-menu-custom, .user-dropdown').forEach(function(menu) {
+                menu.classList.remove('show');
+            });
+            document.querySelectorAll('.chevron-icon').forEach(function(chevron) {
+                chevron.classList.remove('rotate');
+            });
+        });
         
         // Verificar que jQuery esté cargado
         function verificarJQuery() {
@@ -298,10 +324,28 @@ $idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuario
                     { "orderable": false, "targets": [] }
                 ],
                 "responsive": true,
-                "scrollX": true
+                "scrollX": true,
+                "deferRender": true
+            });
+
+            // Búsqueda global instantánea
+            $('#filtro_global').on('input', function() {
+                const term = this.value || '';
+                tablaOrdenesTAC.search(term).draw();
             });
         }
         
+        // Debounce utilitario
+        function debounce(fn, wait) {
+            let t;
+            return function(...args) {
+                clearTimeout(t);
+                t = setTimeout(() => fn.apply(this, args), wait);
+            };
+        }
+
+        const cargarOrdenesTACDebounced = debounce(cargarOrdenesTAC, 300);
+
         function cargarOrdenesTAC() {
             console.log('Iniciando carga de órdenes TAC');
             const fechaInicio = $('#fecha_inicio').val();
@@ -380,6 +424,10 @@ $idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuario
                 }
             });
         }
+
+        // Auto-aplicar filtros al instante
+        $('#fecha_inicio, #fecha_fin').on('change', function() { cargarOrdenesTACDebounced(); });
+        $('#estatus').on('change', function() { cargarOrdenesTACDebounced(); });
         
         function mostrarOrdenes(ordenes) {
             if (tablaOrdenesTAC) {

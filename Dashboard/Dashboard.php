@@ -546,6 +546,33 @@ $Usuario = $_SESSION['usuario'];
             // Auto-refresh cada 10 minutos para rangos
             setInterval(cargarDashboard, 600000);
         });
+
+        // Dropdown de módulos
+        document.getElementById('modulosDropdown').addEventListener('click', function(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('modulosMenu');
+        const chevron = this.querySelector('.chevron-icon');
+        menu.classList.toggle('show');
+        chevron.classList.toggle('rotate');
+        });
+        // Menú de usuario
+        document.getElementById('userMenuButton').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('userDropdownMenu');
+            const chevron = this.querySelector('.chevron-icon');
+            menu.classList.toggle('show');
+            chevron.classList.toggle('rotate');
+        });
+        // Cerrar dropdowns al hacer clic fuera
+        document.addEventListener('click', function() {
+            document.querySelectorAll('.dropdown-menu-custom, .user-dropdown').forEach(function(menu) {
+                menu.classList.remove('show');
+            });
+            document.querySelectorAll('.chevron-icon').forEach(function(chevron) {
+                chevron.classList.remove('rotate');
+            });
+        });
+        
         
         function cargarDashboard() {
             const fechaInicio = $('#fecha_inicio').val();
@@ -784,6 +811,109 @@ $Usuario = $_SESSION['usuario'];
                         </div>
                     </div>
                 </div>
+                
+                <!-- Reporte: Rankings Técnicos y Contratistas -->
+                <div class="row">
+                    <div class="col-xl-12 col-lg-12">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-user-hard-hat"></i> Ranking de Técnicos (Liq. Coordiapp)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="tablaRankingTecnicos" width="100%">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Técnico</th>
+                                                <th>Expediente</th>
+                                                <th>COPE</th>
+                                                <th>Contratista</th>
+                                                <th>Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${Array.isArray(data.ranking_tecnicos) ? data.ranking_tecnicos.map((t, idx) => `
+                                                <tr>
+                                                    <td>${idx + 1}</td>
+                                                    <td>${(t.tecnico || '').toString().toUpperCase()}</td>
+                                                    <td>${t.expediente || ''}</td>
+                                                    <td>${t.cope || ''}</td>
+                                                    <td>${(t.contratista || '').toString().toUpperCase()}</td>
+                                                    <td>${t.total || 0}</td>
+                                                </tr>
+                                            `).join('') : ''}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6 col-lg-6">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-people-carry"></i> Ranking de Contratistas (Liq. Coordiapp)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="tablaRankingContratistas" width="100%">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Contratista</th>
+                                                <th>Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${Array.isArray(data.ranking_contratistas) ? data.ranking_contratistas.map((c, idx) => `
+                                                <tr>
+                                                    <td>${idx + 1}</td>
+                                                    <td>${(c.contratista || '').toString().toUpperCase()}</td>
+                                                    <td>${c.total || 0}</td>
+                                                </tr>
+                                            `).join('') : ''}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6 col-lg-6">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-network-wired"></i> Ranking de COPEs (Liq. Coordiapp)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="tablaRankingCopes" width="100%">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>COPE</th>
+                                                <th>Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${Array.isArray(data.ranking_copes) ? data.ranking_copes.map((r, idx) => `
+                                                <tr>
+                                                    <td>${idx + 1}</td>
+                                                    <td>${(r.cope || '').toString().toUpperCase()}</td>
+                                                    <td>${r.total || 0}</td>
+                                                </tr>
+                                            `).join('') : ''}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
             
             $('#dashboardContent').html(html);
@@ -796,6 +926,27 @@ $Usuario = $_SESSION['usuario'];
             if (mostrarGraficoTemporal) {
                 generarGraficoTemporal(data.estadisticas_por_fecha);
             }
+
+            // Inicializar DataTables para rankings con orden descendente por Total
+            try {
+                if (window.DataTable) {
+                    new DataTable('#tablaRankingTecnicos', {
+                        pageLength: 10,
+                        order: [[5, 'desc']],
+                        language: { url: 'https://cdn.datatables.net/plug-ins/1.10.16/i18n/Spanish.json' }
+                    });
+                    new DataTable('#tablaRankingContratistas', {
+                        pageLength: 10,
+                        order: [[2, 'desc']],
+                        language: { url: 'https://cdn.datatables.net/plug-ins/1.10.16/i18n/Spanish.json' }
+                    });
+                    new DataTable('#tablaRankingCopes', {
+                        pageLength: 10,
+                        order: [[2, 'desc']],
+                        language: { url: 'https://cdn.datatables.net/plug-ins/1.10.16/i18n/Spanish.json' }
+                    });
+                }
+            } catch (e) { console.error('Error inicializando DataTables rankings', e); }
         }
         
         function generarTarjetasDivisiones(divisiones) {

@@ -144,7 +144,7 @@ if (!empty($copesData)) {
                         </svg>
                     </button>
                     <div class="user-dropdown" id="userDropdownMenu">
-                        <a class="user-dropdown-item" href="#" data-toggle="modal" data-target="#modalLogout">
+                        <a class="user-dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalLogout">
                             <i class="fas fa-sign-out-alt"></i>
                             Cerrar Sesión
                         </a>

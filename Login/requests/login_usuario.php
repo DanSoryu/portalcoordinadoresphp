@@ -5,7 +5,7 @@ ini_set('display_errors', 0); // evitar HTML
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/error.log');
 
-require_once $_SERVER['DOCUMENT_ROOT'] . "/PortalCoordinadores/Login/db/Auth.php";
+require_once $_SERVER['DOCUMENT_ROOT'] . "/Login/db/Auth.php";
 
 header('Content-Type: application/json');
 

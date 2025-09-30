@@ -9,18 +9,13 @@ class Ordenes extends Conexion
             $conexion = $this->get_conexion();
             $offset = ($page - 1) * $perPage;
 
-            // Construir condiciones dinámicas
-            $condiciones = [];
-            $params = [];
-
             // Filtro de copes
-            if (!empty($copes) && is_array($copes)) {
-                $placeholders = implode(',', array_fill(0, count($copes), '?'));
-                $condiciones[] = "FK_Cope IN ($placeholders)";
-                $params = array_merge($params, $copes);
-            } else {
+            if (empty($copes) || !is_array($copes)) {
                 throw new Exception("Debe proporcionar al menos un COPE");
             }
+            $placeholders = implode(',', array_fill(0, count($copes), '?'));
+            $condiciones = ["FK_Cope IN ($placeholders)"];
+            $params = $copes;
 
             // Filtro de fechas
             if ($fechaInicio && $fechaFin) {
@@ -43,7 +38,7 @@ class Ordenes extends Conexion
                 }
             }
 
-            $where = $condiciones ? 'WHERE ' . implode(' AND ', $condiciones) : '';
+            $where = 'WHERE ' . implode(' AND ', $condiciones);
 
             // Columnas a seleccionar (ajusta si necesitas menos/más)
             $select = "
@@ -74,24 +69,24 @@ class Ordenes extends Conexion
                 $select
             );
             $sqlIncompletas = "SELECT $selectIncompletas FROM erpintr1_erp.View_Detalle_Coordiapp_Incompletas $where";
-
-            // Unir ambas consultas
             $sqlUnion = "($sqlCompletadas) UNION ALL ($sqlIncompletas)";
 
-            // Contar total para paginación
+            // Parámetros para ambas consultas
+            $allParams = array_merge($params, $params);
+
+            // Conteo
             $sqlCount = "SELECT COUNT(*) as total FROM ($sqlUnion) as todas_ordenes";
             $stmtCount = $conexion->prepare($sqlCount);
-            $stmtCount->execute(array_merge($params, $params));
+            $stmtCount->execute($allParams);
             $total = $stmtCount->fetchColumn();
 
-            // Aplicar paginación y orden
-            $sqlFinal = "$sqlUnion ORDER BY Fecha_Coordiapp DESC LIMIT ? OFFSET ?";
+            // Paginación
+            $sqlFinal = $sqlUnion . " ORDER BY Fecha_Coordiapp DESC LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
+            $finalParams = array_merge($params, $params);
             $stmt = $conexion->prepare($sqlFinal);
-            $allParams = array_merge($params, $params, [$perPage, $offset]);
-            $stmt->execute($allParams);
+            $stmt->execute($finalParams);
             $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Respuesta paginada
             return [
                 'current_page' => (int)$page,
                 'data' => $resultados,
@@ -105,10 +100,16 @@ class Ordenes extends Conexion
                 'total' => (int)$total
             ];
         } catch (PDOException $e) {
-            error_log("Error en obtenerOrdenesPorDivision: " . $e->getMessage());
+            error_log("Error en obtenerOrdenesPorCopes (PDO): " . $e->getMessage());
             return [
                 'error' => true,
-                'message' => 'Error al obtener las órdenes'
+                'message' => 'Error al obtener las órdenes: ' . $e->getMessage()
+            ];
+        } catch (Exception $e) {
+            error_log("Error en obtenerOrdenesPorCopes (Exception): " . $e->getMessage());
+            return [
+                'error' => true,
+                'message' => 'Error al obtener las órdenes: ' . $e->getMessage()
             ];
         }
     }

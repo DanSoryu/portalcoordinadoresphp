@@ -6,6 +6,7 @@ $(document).ready(function() {
 		console.error('No se encontró el idUsuario.');
 		return;
 	}
+	idUsuario = idUsuario.toString(); // Asegura que sea string
 
 	$.ajax({
 		url: '../OrdenesCoordinador/requests/get_copes_ordenes.php',

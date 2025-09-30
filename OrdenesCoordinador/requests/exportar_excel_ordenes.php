@@ -11,8 +11,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $idUsuario = isset($_POST['idUsuario']) ? $_POST['idUsuario'] : null;
 $fechaInicio = isset($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : null;
 $fechaFin = isset($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null;
-$estatus = isset($_POST['estatus']) ? $_POST['estatus'] : null;
-$cope = isset($_POST['cope']) ? $_POST['cope'] : null;
+// Normalizar estatus vacío a null para no filtrar por cadena vacía
+$estatus = (isset($_POST['estatus']) && $_POST['estatus'] !== '') ? $_POST['estatus'] : null;
+// Normalizar cope vacío a null
+$cope = (isset($_POST['cope']) && $_POST['cope'] !== '') ? $_POST['cope'] : null;
 
 if (!$idUsuario) {
     echo json_encode(['error' => 'No se proporcionó ID de usuario']);
@@ -30,7 +32,7 @@ if (!empty($copesData)) {
     }
 }
 // Si se seleccionó un COPE específico, filtrar solo ese
-if ($cope) {
+if ($cope !== null) {
     $copes = [$cope];
 }
 

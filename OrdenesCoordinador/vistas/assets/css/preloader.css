@@ -13,11 +13,10 @@
 
 .content-preloader {
     position: fixed;
-    top: 0;
+    top: 64px; /* altura del header fijo */
     right: 0;
     bottom: 0;
-    left: 224px; /* Ancho del sidebar */
-    margin-top: 70px; /* Altura del topbar */
+    left: 0;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -25,9 +24,7 @@
 }
 
 @media (max-width: 768px) {
-    .content-preloader {
-        left: 0;
-    }
+    .content-preloader { left: 0; top: 64px; }
 }
 
 .preloader.fade-out {

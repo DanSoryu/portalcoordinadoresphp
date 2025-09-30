@@ -40,7 +40,24 @@ $(document).ready(function() {
 			type: 'POST',
 			data: formData,
 			dataType: 'json',
+			beforeSend: function(jqXHR, settings) {
+				try {
+					console.groupCollapsed('[LOGIN] Enviando petición');
+					console.log('URL:', settings.url);
+					console.log('Método:', settings.type);
+					console.log('Payload:', { usuario: usuario, password: '[OCULTO]' });
+					console.time('[LOGIN] Duración');
+					console.groupEnd();
+				} catch (e) {}
+			},
 			success: function(response) {
+				try {
+					console.groupCollapsed('[LOGIN] Respuesta success');
+					console.log('HTTP 200 OK');
+					console.log('JSON:', response);
+					console.timeEnd('[LOGIN] Duración');
+					console.groupEnd();
+				} catch (e) {}
 				if (response.success) {
 					Toast.success(response.message || 'Autenticación exitosa');
 					setTimeout(function() {
@@ -50,10 +67,21 @@ $(document).ready(function() {
 					Toast.error(response.message || 'Error de autenticación');
 				}
 			},
-			error: function() {
+			error: function(jqXHR, textStatus, errorThrown) {
+				try {
+					console.group('[LOGIN] Error AJAX');
+					console.error('Status:', jqXHR.status, textStatus, errorThrown);
+					console.error('Response headers:', jqXHR.getAllResponseHeaders && jqXHR.getAllResponseHeaders());
+					console.error('Response text:', jqXHR.responseText);
+					console.timeEnd('[LOGIN] Duración');
+					console.groupEnd();
+				} catch (e) {}
 				Toast.error('Error al procesar la solicitud');
 			},
 			complete: function() {
+				try {
+					console.log('[LOGIN] Petición completada');
+				} catch (e) {}
 				formSubmitting = false;
 			}
 		});

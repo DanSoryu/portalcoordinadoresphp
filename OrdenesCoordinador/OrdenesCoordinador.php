@@ -47,6 +47,18 @@ if (!empty($copesData)) {
     <!-- Preloader styles -->
     <link rel="stylesheet" href="../RegistrarUsuariosCoordinadores/vistas/assets/css/preloader.css">
     <style>
+        /* Estilos para el encabezado de la tabla */
+        .table thead th {
+            background-color: #264653 !important;
+            color: white !important;
+            border-color: #264653 !important;
+        }
+        .dataTables_wrapper .dataTables_processing {
+            background: linear-gradient(to right, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.95) 100%);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
         body { margin: 0; padding: 0; font-family: 'Nunito', sans-serif; }
         .main-header { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
         .header-container { max-width: 100%; margin: 0 auto; padding: 0 1.5rem; }
@@ -123,7 +135,7 @@ if (!empty($copesData)) {
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a class="nav-link" href="../OrdenesTAC/OrdenesTAC.php">
+                            <a class="nav-link" href="../OrdenesTac/OrdenesTAC.php">
                                 <i class="fas fa-file-invoice"></i>
                                 <span>Ordenes TAC</span>
                             </a>
@@ -345,27 +357,209 @@ if (!empty($copesData)) {
         </div>
 
         <!-- jQuery y dependencias necesarias -->
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-        <!-- DataTables (requiere jQuery) -->
-        <script src="https://cdn.datatables.net/v/dt/dt-2.2.2/datatables.min.js"></script>
-        <!-- Bootstrap core JavaScript (Bootstrap 5) -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- jQuery desde CDN (más confiable) -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <!-- Bootstrap core JavaScript -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- DataTables -->
+        <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
         <!-- Toastify -->
         <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-        <!-- Custom JS -->
-        
-        <script src="vistas/assets/js/toasts.js"></script>
-        <script src="vistas/assets/js/notifications.js"></script>
-        <script src="vistas/assets/js/ordenes.js"></script>
-        <!-- Dependencias para exportación a Excel -->
+        <!-- ExcelJS + FileSaver para exporte -->
         <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-        <!-- ExcelJS y FileSaver para exportación -->
-        <script src="https://cdn.jsdelivr.net/npm/exceljs@4.5.0/dist/exceljs.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+        
         <script>
-        // Actualizar min y max dinámicamente en los inputs de fecha
-        $(document).ready(function() {
+        let tablaOrdenesCoordinador = null;
+        let datosOrdenes = [];
+
+        // Dropdown de módulos
+        document.getElementById('modulosDropdown').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('modulosMenu');
+            const chevron = this.querySelector('.chevron-icon');
+            menu.classList.toggle('show');
+            chevron.classList.toggle('rotate');
+        });
+
+        // Menú de usuario
+        document.getElementById('userMenuButton').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('userDropdown');
+            const chevron = this.querySelector('.chevron-icon');
+            menu.classList.toggle('show');
+            chevron.classList.toggle('rotate');
+        });
+
+        // Cerrar dropdowns al hacer clic fuera
+        document.addEventListener('click', function() {
+            document.querySelectorAll('.dropdown-menu-custom, .user-dropdown').forEach(function(el) {
+                el.classList.remove('show');
+            });
+            document.querySelectorAll('.chevron-icon').forEach(function(el) {
+                el.classList.remove('rotate');
+            });
+        });
+
+        // Verificar que jQuery esté cargado
+        function verificarJQuery() {
+            if (window.jQuery) {
+                inicializarAplicacion();
+            } else {
+                setTimeout(verificarJQuery, 100);
+            }
+        }
+
+        function inicializarAplicacion() {
+            $(document).ready(function() {
+                inicializarTabla();
+                // Inicializar event listeners para filtros
+                inicializarFiltros();
+            });
+        }
+
+        // Debounce utilitario
+        function debounce(fn, wait) {
+            let timeoutId = null;
+            return (...args) => {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => fn.apply(this, args), wait);
+            };
+        }
+
+        function inicializarTabla() {
+            tablaOrdenesCoordinador = $('#tablaOrdenesCoordinador').DataTable({
+                processing: true,
+                serverSide: true,
+                language: {
+                    processing: `<div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Cargando...</span>
+                        </div>
+                        <div class="mt-2">Cargando datos...</div>
+                    </div>`
+                },
+                ajax: {
+                    url: 'requests/get_copes_ordenes.php',
+                    type: 'POST',
+                    data: function(d) {
+                        return {
+                            ...d,
+                            fecha_inicio: $('#fecha_inicio').val(),
+                            fecha_fin: $('#fecha_fin').val(),
+                            estatus: $('#estatus').val(),
+                            cope: $('#cope').val(),
+                            idUsuario: '<?php echo $idUsuario; ?>'
+                        };
+                    }
+                },
+                columns: [
+                    { data: 'id_orden' },
+                    { data: 'os' },
+                    { data: 'telefono' },
+                    { data: 'distrito' },
+                    { data: 'cope' },
+                    { data: 'fecha_creacion' },
+                    { data: 'estatus' },
+                    {
+                        data: null,
+                        render: function(data, type, row) {
+                            return `
+                                <div class="btn-group">
+                                    <button class="btn btn-primary btn-sm" onclick="verFotos('${row.id_orden}')">
+                                        <i class="fas fa-images"></i>
+                                    </button>
+                                </div>`;
+                        }
+                    }
+                ],
+                order: [[5, 'desc']],
+                pageLength: 10,
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+                }
+            });
+        }
+
+        function inicializarFiltros() {
+            const filtros = ['#fecha_inicio', '#fecha_fin', '#estatus', '#cope'];
+            const actualizarTablaDebounced = debounce(() => {
+                tablaOrdenesCoordinador.ajax.reload();
+            }, 300);
+
+            filtros.forEach(filtro => {
+                $(filtro).on('change', actualizarTablaDebounced);
+            });
+
+            // Inicializar fechas
+            const hoy = new Date();
+            const fechaFin = hoy.toISOString().split('T')[0];
+            
+            // Calcular fecha de inicio (1 mes atrás)
+            const mesAnterior = new Date(hoy);
+            mesAnterior.setMonth(hoy.getMonth() - 1);
+            const fechaInicio = mesAnterior.toISOString().split('T')[0];
+            
+            // Establecer valores iniciales
+            $('#fecha_inicio').val(fechaInicio);
+            $('#fecha_fin').val(fechaFin);
+
+            // Establecer min/max en inputs de fecha
+            $('#fecha_inicio').attr('max', fechaFin);
+            $('#fecha_fin').attr('max', fechaFin);
+        }
+
+        function exportarExcel() {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Órdenes');
+            
+            // Definir columnas
+            worksheet.columns = [
+                { header: 'ID Orden', key: 'id_orden', width: 10 },
+                { header: 'OS', key: 'os', width: 15 },
+                { header: 'Teléfono', key: 'telefono', width: 15 },
+                { header: 'Distrito', key: 'distrito', width: 15 },
+                { header: 'COPE', key: 'cope', width: 15 },
+                { header: 'Fecha Creación', key: 'fecha_creacion', width: 20 },
+                { header: 'Estatus', key: 'estatus', width: 15 }
+            ];
+
+            // Obtener datos actuales de la tabla
+            const datos = tablaOrdenesCoordinador.data().toArray();
+            worksheet.addRows(datos);
+
+            // Estilo para encabezados
+            worksheet.getRow(1).font = { bold: true };
+
+            // Generar archivo
+            workbook.xlsx.writeBuffer().then(buffer => {
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                saveAs(blob, 'Ordenes_Coordinador.xlsx');
+                
+                // Mostrar toast de éxito
+                Toastify({
+                    text: "Archivo Excel exportado correctamente",
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#28a745"
+                }).showToast();
+            });
+        }
+
+        function verFotos(idOrden) {
+            // Implementar lógica para mostrar fotos
+            $('#photoModal').modal('show');
+            // Aquí puedes agregar la lógica para cargar las fotos según el idOrden
+        }
+
+        // Iniciar verificación cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', verificarJQuery);
+        } else {
+            verificarJQuery();
+        }
             const $fechaInicio = $('#fecha_inicio');
             const $fechaFin = $('#fecha_fin');
             const minDate = $fechaInicio.attr('min');
@@ -377,7 +571,6 @@ if (!empty($copesData)) {
             $fechaFin.on('change', function() {
                 $fechaInicio.attr('max', this.value || maxDate);
             });
-        });
                 // Dropdown de módulos
                 document.getElementById('modulosDropdown').addEventListener('click', function(e) {
                         e.stopPropagation();

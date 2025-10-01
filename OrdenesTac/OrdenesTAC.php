@@ -103,7 +103,7 @@ $idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuario
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a class="nav-link" href="../OrdenesCoordinador/OrdenesCoordinador.php">
+                            <a class="nav-link" href="../Ordenes/OrdenesCoordinador.php">
                                 <i class="fas fa-table"></i>
                                 <span>Ordenes Coordiapp</span>
                             </a>

@@ -47,6 +47,14 @@ $copesData = $ordenesObj->obtenerCopesCoordinador($idUsuario);
         .main-nav { display: flex; align-items: center; gap: 0.5rem; }
         .nav-item { position: relative; }
         .nav-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; color: white; text-decoration: none; border-radius: 6px; transition: all 0.2s; font-size: 0.875rem; white-space: nowrap; }
+        /* Corrige el botón de módulos para que no tenga fondo ni contorno y sea blanco */
+        #modulosDropdown.nav-link {
+            background: transparent !important;
+            color: white !important;
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }
         .nav-link:hover { background-color: rgba(255, 255, 255, 0.1); color: white; }
         .nav-link i { font-size: 1rem; }
         .dropdown-toggle { background: none; border: none; cursor: pointer; }

@@ -474,7 +474,7 @@ $copesData = $ordenesObj->obtenerCopesCoordinador($idUsuario);
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-bordered" id="tablaOrdenes" width="100%" cellspacing="0">
-                            <thead>
+                            <thead class="thead-dark">
                                 <tr>
                                     <th>Folio Pisa</th>
                                     <th>Teléfono</th>

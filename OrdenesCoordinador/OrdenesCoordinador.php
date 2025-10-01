@@ -1,17 +1,49 @@
 <?php
+// Configuración de error reporting para debugging
+if (php_sapi_name() !== 'cli') {
+    ini_set('display_errors', 0);
+    ini_set('display_startup_errors', 0);
+} else {
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+}
+error_reporting(E_ALL);
+
+// Log errors to a file in production
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/error_log.txt');
+
 // Vista principal para mostrar la tabla de órdenes coordinador
-require_once __DIR__ . "/db/Ordenes.php";
+try {
+    require_once __DIR__ . "/db/error_handler.php";
+    
+    $ordenes_path = __DIR__ . "/db/Ordenes.php";
+    if (!file_exists($ordenes_path)) {
+        error_log("ERROR: No se encuentra el archivo Ordenes.php en: " . $ordenes_path);
+        throw new Exception("Error de configuración del sistema");
+    }
+    require_once $ordenes_path;
 
-session_start();
+    session_start();
 
-if (!isset($_SESSION['usuario'])) {
-    header('Location: ../Login/Login.php');
+    if (!isset($_SESSION['usuario'])) {
+        header('Location: ../Login/Login.php');
+        exit();
+    }
+
+    $Usuario = $_SESSION['usuario'];
+    $idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuarios_coordinadores'] : null;
+
+    if (!$idUsuario) {
+        error_log("ERROR: ID de usuario no encontrado en la sesión");
+        throw new Exception("Error de autenticación");
+    }
+} catch (Exception $e) {
+    // Manejo de errores
+    echo "<h1>Error</h1>";
+    echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
     exit();
 }
-
-$Usuario = $_SESSION['usuario'];
-$idUsuario = $_SESSION['idusuarios_coordinadores'];
-
 $ordenesObj = new Ordenes();
 // Obtener copes del coordinador mediante la función pivote
 $copesData = $ordenesObj->obtenerCopesCoordinador($idUsuario);

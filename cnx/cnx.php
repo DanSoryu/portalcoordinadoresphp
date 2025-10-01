@@ -20,6 +20,26 @@
                 return $e->getMessage();
             }
         }
+
+        public function get_conexion_analytics()
+        {
+            $user = "analisis15";
+            $pass = "8#1gnbB30";
+            $host = "67.217.246.65";
+            $db   = "analisis_bd";
+            $dsn  = "mysql:host=$host;dbname=$db;charset=utf8";
+
+            try {
+                $conexion = new PDO($dsn, $user, $pass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                ]);
+                return $conexion;
+            } catch (PDOException $e) {
+                // Loguear el error en producción en vez de mostrarlo
+                die("Error de conexión a la base de datos remota: " . $e->getMessage());
+            }
+        }
     }
 
 ?>

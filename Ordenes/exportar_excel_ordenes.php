@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-require_once($_SERVER['DOCUMENT_ROOT'] . '/PortalCoordinadores/cnx/cnx.php');
+require_once __DIR__ . '/../cnx/cnx.php';
 require_once('./Ordenes.php');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

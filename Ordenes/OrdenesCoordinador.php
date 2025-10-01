@@ -763,7 +763,19 @@ $copesData = $ordenesObj->obtenerCopesCoordinador($idUsuario);
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-MX.json'
                 },
-                pageLength: 20
+                pageLength: 20,
+                drawCallback: function(settings) {
+                    // Mostrar Toast según si hay registros o no
+                    const api = this.api();
+                    const rows = api.rows({ page: 'current' }).data().length;
+                    if (settings.iDraw > 1) {
+                        if (rows > 0) {
+                            mostrarAlerta('success', 'Datos actualizados correctamente');
+                        } else {
+                            mostrarAlerta('error', 'No hay registros con los filtros seleccionados');
+                        }
+                    }
+                }
             });
         }
         

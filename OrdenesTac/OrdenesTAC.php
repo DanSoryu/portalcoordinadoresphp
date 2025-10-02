@@ -99,7 +99,7 @@ $idUsuario = isset($_SESSION['idusuarios_coordinadores']) ? $_SESSION['idusuario
                                 <a class="dropdown-item-custom" href="../Dashboard/Dashboard.php">
                                     <i class="fas fa-cogs"></i> Operaciones
                                 </a>
-                                <a class="dropdown-item-custom" href="../../../AlmacenNuevo/index.php">
+                                <a class="dropdown-item-custom" href="../Almacen/index.php">
                                     <i class="fas fa-warehouse"></i> Almacén
                                 </a>
                             </div>

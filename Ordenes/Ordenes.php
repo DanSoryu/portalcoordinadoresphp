@@ -44,6 +44,7 @@ class Ordenes extends Conexion
             $select = "
                 Folio_Pisa, Telefono, Ont,
                 CASE 
+                    WHEN Estatus_Orden = 'OBJETADA' THEN 'OBJETADA'
                     WHEN Step_Registro < 5 THEN 'INCOMPLETO'
                     WHEN Step_Registro = 5 THEN 'COMPLETADA'
                     ELSE 'INCOMPLETO'

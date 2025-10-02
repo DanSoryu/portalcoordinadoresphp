@@ -3,7 +3,7 @@
 	/**
 	 * DESARROLLADO ING. ANTONIO CARDONA
 	 */
-    require_once($_SERVER['DOCUMENT_ROOT']."/PortalCoordinadores/cnx/cnx.php");
+    require_once __DIR__ . '/../cnx/cnx.php';
 
     class Ops extends Conexion
     {

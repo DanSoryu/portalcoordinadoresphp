@@ -736,7 +736,12 @@ $copesData = $ordenesObj->obtenerCopesCoordinador($idUsuario);
                     { 
                         data: 'Estatus_Real',
                         render: function(data) {
-                            const clase = data === 'COMPLETADA' ? 'success' : 'warning';
+                            let clase = 'warning';
+                            if (data === 'COMPLETADA') {
+                                clase = 'success';
+                            } else if (data === 'OBJETADA') {
+                                clase = 'danger';
+                            }
                             return `<span class="badge badge-${clase}">${data}</span>`;
                         }
                     },

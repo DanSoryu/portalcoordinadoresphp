@@ -87,10 +87,10 @@ $Usuario = $_SESSION['usuario'];
                             </button>
                             <div class="dropdown-menu-custom" id="modulosMenu">
                                 <div class="dropdown-header-custom">Módulos</div>
-                                <a class="dropdown-item-custom" href="./Dashboard.php">
+                                <a class="dropdown-item-custom" href="../Dashboard/Dashboard.php">
                                     <i class="fas fa-cogs"></i> Operaciones
                                 </a>
-                                <a class="dropdown-item-custom" href="../Almacen/index.php">
+                                <a class="dropdown-item-custom" href="./index.php">
                                     <i class="fas fa-warehouse"></i> Almacén
                                 </a>
                             </div>

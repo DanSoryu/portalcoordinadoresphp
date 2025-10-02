@@ -18,10 +18,7 @@ $Usuario = $_SESSION['usuario'];
     <meta name="author" content="">
     <title>Dashboard</title>
     <!-- Custom fonts for this template -->
-    <link href="/Operaciones/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
-    <!-- Custom styles for this template -->
-    <link href="/Operaciones/css/sb-admin-2.min.css" rel="stylesheet">
     <!-- Custom styles for this page -->
     <link href="https://cdn.datatables.net/v/dt/dt-2.2.2/datatables.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
@@ -102,7 +99,7 @@ $Usuario = $_SESSION['usuario'];
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a class="nav-link" href="../OrdenesCoordinador/OrdenesCoordinador.php">
+                            <a class="nav-link" href="../Ordenes/OrdenesCoordinador.php">
                                 <i class="fas fa-table"></i>
                                 <span>Ordenes Coordiapp</span>
                             </a>
@@ -140,14 +137,6 @@ $Usuario = $_SESSION['usuario'];
     </header>
 
     <?php include('../Login/vistas/components/Logout.php'); ?>
-    <!-- jQuery primero -->
-    <script src="/Operaciones/vendor/jquery/jquery.min.js"></script>
-    <!-- Bootstrap core JavaScript (Bootstrap 4 for sb-admin-2)-->
-    <script src="/Operaciones/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <!-- Core plugin JavaScript-->
-    <script src="/Operaciones/vendor/jquery-easing/jquery.easing.min.js"></script>
-    <!-- Custom scripts for all pages-->
-    <script src="/Operaciones/js/sb-admin-2.min.js"></script>
     <!-- DataTables -->
     <script src="https://cdn.datatables.net/v/dt/dt-2.2.2/datatables.min.js"></script>
     <!-- Toastify -->
@@ -195,9 +184,6 @@ $Usuario = $_SESSION['usuario'];
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     
     <script src="https://kit.fontawesome.com/b5137b0dd6.js" crossorigin="anonymous"></script>
-
-    <!-- Custom styles for this template-->
-    <link href="css/sb-admin-2.min.css" rel="stylesheet">
     
     <style>
         .metric-card {
@@ -501,9 +487,6 @@ $Usuario = $_SESSION['usuario'];
 
     <!-- Core plugin JavaScript-->
     <script src="vendor/jquery-easing/jquery.easing.min.js"></script>
-
-    <!-- Custom scripts for all pages-->
-    <script src="js/sb-admin-2.min.js"></script>
 
     <!-- Chart.js -->
     <script src="vendor/chart.js/Chart.min.js"></script>

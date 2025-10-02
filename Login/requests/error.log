@@ -1,4 +1,6 @@
 [30-Sep-2025 22:35:26 Europe/Berlin] [LOGIN] Auth->autenticar ejecutado en 425.01ms
 [30-Sep-2025 22:37:41 Europe/Berlin] [LOGIN] Auth->autenticar ejecutado en 425.34ms
-[01-Oct-2025 19:15:01 Europe/Berlin] [LOGIN] Auth->autenticar ejecutado en 308.58ms
-[01-Oct-2025 19:15:09 Europe/Berlin] [LOGIN] Auth->autenticar ejecutado en 512.00ms
+[01-Oct-2025 18:28:16 Europe/Berlin] [LOGIN] Auth->autenticar ejecutado en 559.21ms
+[01-Oct-2025 19:02:12 Europe/Berlin] [LOGIN] Auth->autenticar ejecutado en 465.64ms
+[01-Oct-2025 19:11:47 Europe/Berlin] [LOGIN] Auth->autenticar ejecutado en 480.20ms
+[01-Oct-2025 20:04:52 Europe/Berlin] [LOGIN] Auth->autenticar ejecutado en 518.61ms

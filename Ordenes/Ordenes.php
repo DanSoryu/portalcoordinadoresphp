@@ -19,9 +19,12 @@ class Ordenes extends Conexion
 
             // Filtro de fechas
             if ($fechaInicio && $fechaFin) {
+                // Agregar hora a las fechas para cubrir todo el rango del día
+                $fechaInicioCompleta = $fechaInicio . ' 00:00:00';
+                $fechaFinCompleta = $fechaFin . ' 23:59:59';
                 $condiciones[] = "Fecha_Coordiapp BETWEEN ? AND ?";
-                $params[] = $fechaInicio;
-                $params[] = $fechaFin;
+                $params[] = $fechaInicioCompleta;
+                $params[] = $fechaFinCompleta;
             }
 
             // Filtro de estatus

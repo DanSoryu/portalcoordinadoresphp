@@ -87,10 +87,10 @@ $Usuario = $_SESSION['usuario'];
                             </button>
                             <div class="dropdown-menu-custom" id="modulosMenu">
                                 <div class="dropdown-header-custom">Módulos</div>
-                                <a class="dropdown-item-custom" href="./Dashboard.php">
+                                <a class="dropdown-item-custom" href="../Dashboard/Dashboard.php">
                                     <i class="fas fa-cogs"></i> Operaciones
                                 </a>
-                                <a class="dropdown-item-custom" href="../Almacen/index.php">
+                                <a class="dropdown-item-custom" href="./index.php">
                                     <i class="fas fa-warehouse"></i> Almacén
                                 </a>
                             </div>
@@ -156,5 +156,32 @@ $Usuario = $_SESSION['usuario'];
     <script src="vistas/assets/js/preloader.js"></script>
     <script src="vistas/assets/js/toasts.js"></script>
     <script src="vistas/assets/js/notifications.js"></script>
+    <script>
+        // Dropdown de módulos
+        document.getElementById('modulosDropdown').addEventListener('click', function(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('modulosMenu');
+        const chevron = this.querySelector('.chevron-icon');
+        menu.classList.toggle('show');
+        chevron.classList.toggle('rotate');
+        });
+        // Menú de usuario
+        document.getElementById('userMenuButton').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('userDropdownMenu');
+            const chevron = this.querySelector('.chevron-icon');
+            menu.classList.toggle('show');
+            chevron.classList.toggle('rotate');
+        });
+        // Cerrar dropdowns al hacer clic fuera
+        document.addEventListener('click', function() {
+            document.querySelectorAll('.dropdown-menu-custom, .user-dropdown').forEach(function(menu) {
+                menu.classList.remove('show');
+            });
+            document.querySelectorAll('.chevron-icon').forEach(function(chevron) {
+                chevron.classList.remove('rotate');
+            });
+        });
+        </script>
 </body>
 </html>

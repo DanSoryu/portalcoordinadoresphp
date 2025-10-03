@@ -417,6 +417,90 @@ $Usuario = $_SESSION['usuario'];
                             <span class="badge badge-info" id="total_dias">0 días analizados</span>
                         </div>
                     </div>
+
+                    <!-- JavaScript para inicializar selectores y eventos -->
+                    <script>
+                    $(document).ready(function() {
+                        // Llenar el selector de períodos al iniciar
+                        actualizarSelectorPeriodos();
+                        
+                        // Evento al cambiar el tipo de período
+                        $('#tipoPeriodo').change(function() {
+                            actualizarSelectorPeriodos();
+                        });
+                        
+                        // Evento al cambiar el período específico
+                        $('#periodoSelect').change(function() {
+                            cargarComparativo($('#tipoPeriodo').val(), $(this).val());
+                        });
+                        
+                        // No cargar datos iniciales aquí, se cargarán después de cargarDashboard()
+                    });
+                    
+                    function actualizarSelectorPeriodos() {
+                        const tipoPeriodo = $('#tipoPeriodo').val();
+                        const periodoSelect = $('#periodoSelect');
+                        periodoSelect.empty();
+                        
+                        const fechaActual = new Date();
+                        let opciones = [];
+                        
+                        switch(tipoPeriodo) {
+                            case 'semana':
+                                // Últimas 12 semanas
+                                for(let i = 0; i < 12; i++) {
+                                    const fecha = new Date(fechaActual);
+                                    fecha.setDate(fecha.getDate() - (i * 7));
+                                    const numSemana = getWeekNumber(fecha)[1];
+                                    const anio = getWeekNumber(fecha)[0];
+                                    opciones.push({
+                                        value: `${anio}-W${numSemana}`,
+                                        text: `Semana ${numSemana} (${fecha.toLocaleDateString('es-MX', {month: 'short', year: 'numeric'})})`
+                                    });
+                                }
+                                break;
+                                
+                            case 'mes':
+                                // Últimos 12 meses
+                                for(let i = 0; i < 12; i++) {
+                                    const fecha = new Date(fechaActual.getFullYear(), fechaActual.getMonth() - i, 1);
+                                    opciones.push({
+                                        value: fecha.toISOString().slice(0,7),
+                                        text: fecha.toLocaleDateString('es-MX', {month: 'long', year: 'numeric'})
+                                    });
+                                }
+                                break;
+                                
+                            case 'año':
+                                // Últimos 5 años
+                                const anioActual = fechaActual.getFullYear();
+                                for(let i = 0; i < 5; i++) {
+                                    const anio = anioActual - i;
+                                    opciones.push({
+                                        value: anio.toString(),
+                                        text: anio.toString()
+                                    });
+                                }
+                                break;
+                        }
+                        
+                        // Agregar opciones al select
+                        opciones.forEach(opcion => {
+                            periodoSelect.append(new Option(opcion.text, opcion.value));
+                        });
+                        
+                        // Cargar datos con el nuevo período seleccionado
+                        cargarComparativo(tipoPeriodo, periodoSelect.val());
+                    }
+                    
+                    function getWeekNumber(d) {
+                        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+                        var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+                        var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+                        return [d.getUTCFullYear(), weekNo];
+                    }
+                    </script>
                     
                     <!-- Alert para mensajes -->
                     <div id="alertContainer"></div>
@@ -592,6 +676,8 @@ $Usuario = $_SESSION['usuario'];
                         mostrarDashboard(response.data);
                         dashboardData = response.data; // guardar datos para exportación
                         $('#ultima_actualizacion').text(new Date().toLocaleString());
+                        // Cargar datos comparativos después de mostrar el dashboard
+                        cargarComparativo($('#tipoPeriodo').val(), $('#periodoSelect').val());
                         mostrarAlerta('success', `Datos actualizados correctamente (${diferenciaDias} días analizados)`);
                     } else {
                         mostrarAlerta('danger', 'Error: ' + response.message);
@@ -635,6 +721,32 @@ $Usuario = $_SESSION['usuario'];
             const mostrarGraficoTemporal = data.estadisticas_por_fecha && data.estadisticas_por_fecha.length > 1;
             
             const html = `
+                <!-- Gráfica Comparativa -->
+                <div class="row mt-4">
+                    <div class="col-xl-12">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                <h6 class="m-0 font-weight-bold text-primary">Comparativa de Registros en el Tiempo</h6>
+                                <div class="d-flex gap-2">
+                                    <select id="tipoPeriodo" class="form-control form-control-sm mr-2">
+                                        <option value="semana">Por Semana</option>
+                                        <option value="mes">Por Mes</option>
+                                        <option value="año">Por Año</option>
+                                    </select>
+                                    <select id="periodoSelect" class="form-control form-control-sm mr-2">
+                                        <!-- Se llena dinámicamente -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-area" style="height: 300px;">
+                                    <canvas id="comparativaChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Métricas Principales -->
                 <div class="row mb-4">
                     <div class="col-xl-3 col-md-6 mb-4">
@@ -883,6 +995,7 @@ $Usuario = $_SESSION['usuario'];
             
             // Generar gráficos
             generarGraficoCumplimiento(data.resumen);
+            console.log('DEBUG: datos recibidos para COPEs =>', data.copes);
             generarGraficoCopes(data.copes); // Cambiar de data.areas a data.copes
             
             // Generar gráfico temporal si es necesario
@@ -1297,10 +1410,13 @@ $Usuario = $_SESSION['usuario'];
             }
             
             // Verificar si copes está definido y tiene datos
-            if (!copes || !copes.length) {
+            if (!copes || !Array.isArray(copes) || !copes.length) {
                 console.warn('No hay datos de COPEs disponibles para el gráfico');
                 return;
             }
+            
+            // Asegurarse de que los datos tienen la estructura correcta
+            copes = copes.filter(cope => cope && cope.cope && typeof cope.registradas === 'number' && typeof cope.total_tac === 'number');
             
             // Tomar solo los primeros 10 COPEs ordenados por cumplimiento
             const top10Copes = copes.slice(0, 10);
@@ -1477,6 +1593,165 @@ $Usuario = $_SESSION['usuario'];
             }, 5000);
         }
         
+        // Función para cargar y mostrar el gráfico comparativo por períodos
+        let chartComparativo;
+        function cargarComparativo(periodo = 'mes', valor = null) {
+            const fechaInicio = $('#fecha_inicio').val();
+            const fechaFin = $('#fecha_fin').val();
+            
+            if (!fechaInicio || !fechaFin) {
+                console.warn('Se requieren fechas de inicio y fin para cargar datos comparativos');
+                return;
+            }
+            
+            $.ajax({
+                url: 'modal/ComparativaData.php',
+                type: 'GET',
+                data: {
+                    accion: 'datosComparativos',
+                    periodo: periodo,
+                    valor: valor,
+                    fechaInicio: fechaInicio,
+                    fechaFin: fechaFin
+                },
+                success: function(response) {
+                    console.log('DEBUG: respuesta AJAX comparativa =>', response);
+                    if (response.error) {
+                        console.error('Error:', response.error);
+                        mostrarAlerta('warning', 'Error al cargar datos comparativos: ' + response.error);
+                        return;
+                    }
+                    if (!Array.isArray(response)) {
+                        console.error('Formato de respuesta inválido:', response);
+                        mostrarAlerta('warning', 'Error: Formato de datos inválido');
+                        return;
+                    }
+                    mostrarGraficoComparativo(response);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error en la solicitud:', error);
+                    if (xhr && xhr.responseText) {
+                        console.error('Respuesta del servidor:', xhr.responseText);
+                        mostrarAlerta('danger', 'Error al cargar datos comparativos. Ver consola para más detalles.');
+                    }
+                }
+            });
+        }
+        
+        function mostrarGraficoComparativo(datos) {
+            console.log('DEBUG: mostrarGraficoComparativo recibe:', datos);
+            const ctx = document.getElementById('comparativaChart').getContext('2d');
+            
+            if (chartComparativo) {
+                chartComparativo.destroy();
+            }
+            
+            const fechas = datos.map(item => {
+                const fecha = new Date(item.fecha);
+                return fecha.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
+            });
+            
+            chartComparativo = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: fechas,
+                    datasets: [
+                        {
+                            label: 'TAC',
+                            data: datos.map(item => item.registros_tac),
+                            borderColor: '#4e73df',
+                            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Coordiapp',
+                            data: datos.map(item => item.registros_coordiapp),
+                            borderColor: '#1cc88a',
+                            backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Cumplimiento %',
+                            data: datos.map(item => item.cumplimiento),
+                            borderColor: '#f6c23e',
+                            backgroundColor: 'rgba(246, 194, 62, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Fecha'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Cantidad de Órdenes'
+                            },
+                            min: 0
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Porcentaje (%)'
+                            },
+                            min: 0,
+                            max: 100,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const datasetIndex = context.datasetIndex;
+                                    const dataIndex = context.dataIndex;
+                                    const data = datos[dataIndex];
+                                    
+                                    if (datasetIndex === 2) { // Porcentaje
+                                        return `${data.cumplimiento.toFixed(1)}%`;
+                                    } else {
+                                        return datasetIndex === 0 ? 
+                                            `TAC: ${data.registros_tac} órdenes` : 
+                                            `Coordiapp: ${data.registros_coordiapp} órdenes`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         // Función para mostrar/ocultar COPEs
         function toggleCopes(index) {
             const contenedor = $(`#copes-${index}`);

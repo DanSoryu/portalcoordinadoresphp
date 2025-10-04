@@ -1023,6 +1023,10 @@ $Usuario = $_SESSION['usuario'];
                     });
                 }
             } catch (e) { console.error('Error inicializando DataTables rankings', e); }
+            
+            // Inicializar selectores de períodos después de cargar el HTML
+            console.log('Inicializando selectores de períodos para gráfico comparativo');
+            actualizarSelectorPeriodos();
         }
         
         function generarTarjetasDivisiones(divisiones) {
@@ -1599,20 +1603,35 @@ $Usuario = $_SESSION['usuario'];
             const fechaInicio = $('#fecha_inicio').val();
             const fechaFin = $('#fecha_fin').val();
             
+            console.log('=== INICIO cargarComparativo ===');
+            console.log('Parámetros recibidos:', {
+                periodo: periodo,
+                valor: valor,
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin
+            });
+            
             if (!fechaInicio || !fechaFin) {
                 console.warn('Se requieren fechas de inicio y fin para cargar datos comparativos');
                 return;
             }
             
+            const ajaxData = {
+                accion: 'datosComparativos',
+                periodo: periodo,
+                valor: valor,
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin
+            };
+            
+            console.log('Datos que se enviarán al servidor:', ajaxData);
+            
             $.ajax({
                 url: 'modal/ComparativaData.php',
                 type: 'GET',
-                data: {
-                    accion: 'datosComparativos',
-                    periodo: periodo,
-                    valor: valor,
-                    fechaInicio: fechaInicio,
-                    fechaFin: fechaFin
+                data: ajaxData,
+                beforeSend: function() {
+                    console.log('Enviando petición AJAX a modal/ComparativaData.php');
                 },
                 success: function(response) {
                     console.log('DEBUG: respuesta AJAX comparativa =>', response);
@@ -1626,130 +1645,281 @@ $Usuario = $_SESSION['usuario'];
                         mostrarAlerta('warning', 'Error: Formato de datos inválido');
                         return;
                     }
+                    console.log('Total de registros recibidos:', response.length);
                     mostrarGraficoComparativo(response);
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error en la solicitud:', error);
+                    console.error('Error en la solicitud AJAX:', {
+                        status: status,
+                        error: error,
+                        responseText: xhr.responseText
+                    });
                     if (xhr && xhr.responseText) {
                         console.error('Respuesta del servidor:', xhr.responseText);
                         mostrarAlerta('danger', 'Error al cargar datos comparativos. Ver consola para más detalles.');
                     }
                 }
             });
+            console.log('=== FIN cargarComparativo (petición enviada) ===');
         }
         
         function mostrarGraficoComparativo(datos) {
             console.log('DEBUG: mostrarGraficoComparativo recibe:', datos);
-            const ctx = document.getElementById('comparativaChart').getContext('2d');
             
-            if (chartComparativo) {
-                chartComparativo.destroy();
+            // Validar que el canvas existe
+            const canvas = document.getElementById('comparativaChart');
+            if (!canvas) {
+                console.error('ERROR: No se encontró el elemento canvas con id "comparativaChart"');
+                return;
             }
             
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error('ERROR: No se pudo obtener el contexto 2d del canvas');
+                return;
+            }
+            
+            // Destruir gráfico anterior si existe
+            if (chartComparativo) {
+                try {
+                    chartComparativo.destroy();
+                } catch (e) {
+                    console.warn('Error al destruir gráfico anterior:', e);
+                }
+            }
+            
+            // Validar datos
+            if (!datos || !Array.isArray(datos) || datos.length === 0) {
+                console.warn('No hay datos para mostrar en el gráfico comparativo');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#6c757d';
+                ctx.textAlign = 'center';
+                ctx.fillText('No hay datos disponibles para el rango seleccionado', canvas.width/2, canvas.height/2);
+                return;
+            }
+            
+            // Obtener el tipo de periodo seleccionado
+            const tipoPeriodo = $('#tipoPeriodo').val() || 'mes';
+            
+            console.log('DEBUG: Tipo de período para mapeo:', tipoPeriodo);
+            console.log('DEBUG: Datos crudos recibidos:', datos);
+            
+            // Procesar fechas según el tipo de periodo
             const fechas = datos.map(item => {
-                const fecha = new Date(item.fecha);
-                return fecha.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
+                // Asegurarse de que la fecha se interprete correctamente sin problemas de timezone
+                const fechaStr = item.fecha;
+                const fecha = new Date(fechaStr + 'T12:00:00'); // Agregar hora del mediodía para evitar problemas de timezone
+                
+                console.log('DEBUG: Procesando fecha:', fechaStr, '-> Date object:', fecha);
+                
+                switch(tipoPeriodo) {
+                    case 'año':
+                        // Mostrar solo meses para el periodo anual
+                        return fecha.toLocaleDateString('es-MX', { month: 'short', year: 'numeric' });
+                    case 'mes':
+                        // Mostrar día del mes con mes corto
+                        const dia = fecha.getDate();
+                        const mes = fecha.toLocaleDateString('es-MX', { month: 'short' });
+                        return `${dia} ${mes}`;
+                    case 'semana':
+                        // Mostrar días de la semana con fecha completa
+                        return fecha.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+                    default:
+                        return fecha.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
+                }
             });
             
-            chartComparativo = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: fechas,
-                    datasets: [
-                        {
-                            label: 'TAC',
-                            data: datos.map(item => item.registros_tac),
-                            borderColor: '#4e73df',
-                            backgroundColor: 'rgba(78, 115, 223, 0.1)',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Coordiapp',
-                            data: datos.map(item => item.registros_coordiapp),
-                            borderColor: '#1cc88a',
-                            backgroundColor: 'rgba(28, 200, 138, 0.1)',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Cumplimiento %',
-                            data: datos.map(item => item.cumplimiento),
-                            borderColor: '#f6c23e',
-                            backgroundColor: 'rgba(246, 194, 62, 0.1)',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.4,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Fecha'
-                            }
-                        },
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Cantidad de Órdenes'
+            console.log('DEBUG: Fechas formateadas:', fechas);
+            
+            console.log('DEBUG: Fechas formateadas:', fechas);
+            
+            const tacData = datos.map(item => item.registros_tac || 0);
+            const coordiappData = datos.map(item => item.registros_coordiapp || 0);
+            const cumplimientoData = datos.map(item => item.cumplimiento || 0);
+            
+            console.log('DEBUG: Tipo de período:', tipoPeriodo);
+            console.log('DEBUG: Datos procesados - Fechas:', fechas);
+            console.log('DEBUG: TAC:', tacData);
+            console.log('DEBUG: Coordiapp:', coordiappData);
+            console.log('DEBUG: Cumplimiento:', cumplimientoData);
+            
+            try {
+                // Crear gráfico con sintaxis de Chart.js v2
+                chartComparativo = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: fechas,
+                        datasets: [
+                            {
+                                label: 'TAC',
+                                data: tacData,
+                                borderColor: '#4e73df',
+                                backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                                borderWidth: 2,
+                                fill: false,
+                                lineTension: 0.4,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                                // NO asignar yAxisID para que use el eje por defecto
                             },
-                            min: 0
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Porcentaje (%)'
+                            {
+                                label: 'Coordiapp',
+                                data: coordiappData,
+                                borderColor: '#1cc88a',
+                                backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                                borderWidth: 2,
+                                fill: false,
+                                lineTension: 0.4,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                                // NO asignar yAxisID para que use el eje por defecto
                             },
-                            min: 0,
-                            max: 100,
-                            grid: {
-                                drawOnChartArea: false
+                            {
+                                label: 'Cumplimiento %',
+                                data: cumplimientoData,
+                                borderColor: '#f6c23e',
+                                backgroundColor: 'rgba(246, 194, 62, 0.1)',
+                                borderWidth: 2,
+                                fill: false,
+                                lineTension: 0.4,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                                yAxisID: 'y-axis-percent'  // Solo el porcentaje usa el eje derecho
                             }
-                        }
+                        ]
                     },
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        tooltip: {
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        tooltips: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(255,255,255,0.9)',
+                            titleFontColor: '#333',
+                            bodyFontColor: '#666',
+                            borderColor: '#ddd',
+                            borderWidth: 1,
+                            xPadding: 10,
+                            yPadding: 10,
+                            displayColors: true,
                             callbacks: {
-                                afterLabel: function(context) {
-                                    const datasetIndex = context.datasetIndex;
-                                    const dataIndex = context.dataIndex;
-                                    const data = datos[dataIndex];
+                                title: function(tooltipItems) {
+                                    return tooltipItems[0].xLabel;
+                                },
+                                label: function(tooltipItem, data) {
+                                    let label = data.datasets[tooltipItem.datasetIndex].label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
                                     
-                                    if (datasetIndex === 2) { // Porcentaje
-                                        return `${data.cumplimiento.toFixed(1)}%`;
+                                    // Si es el dataset de cumplimiento (índice 2)
+                                    if (tooltipItem.datasetIndex === 2) {
+                                        label += tooltipItem.yLabel.toFixed(1) + '%';
                                     } else {
-                                        return datasetIndex === 0 ? 
-                                            `TAC: ${data.registros_tac} órdenes` : 
-                                            `Coordiapp: ${data.registros_coordiapp} órdenes`;
+                                        label += tooltipItem.yLabel + ' órdenes';
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        scales: {
+                            xAxes: [{
+                                display: true,
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: getTituloEjeX(tipoPeriodo)
+                                },
+                                gridLines: {
+                                    display: false
+                                },
+                                ticks: {
+                                    autoSkip: true,
+                                    maxRotation: 45,
+                                    minRotation: 0
+                                }
+                            }],
+                            yAxes: [
+                                {
+                                    // Eje principal para TAC y Coordiapp (izquierda)
+                                    id: 'y-axis-0',  // Eje por defecto
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: 'Cantidad de Órdenes'
+                                    },
+                                    ticks: {
+                                        beginAtZero: true,
+                                        callback: function(value) {
+                                            // Solo mostrar números enteros
+                                            if (Math.floor(value) === value) {
+                                                return value;
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    // Eje secundario para porcentaje (derecha)
+                                    id: 'y-axis-percent',
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: 'Porcentaje de Cumplimiento (%)'
+                                    },
+                                    ticks: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    },
+                                    gridLines: {
+                                        drawOnChartArea: false
                                     }
                                 }
+                            ]
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15
                             }
                         }
                     }
-                }
-            });
+                });
+                
+                console.log('DEBUG: Gráfico comparativo creado exitosamente');
+                
+            } catch (error) {
+                console.error('ERROR al crear el gráfico comparativo:', error);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#dc3545';
+                ctx.textAlign = 'center';
+                ctx.fillText('Error al generar el gráfico', canvas.width/2, canvas.height/2 - 10);
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#6c757d';
+                ctx.fillText('Revise la consola para más detalles', canvas.width/2, canvas.height/2 + 10);
+            }
+        }
+        
+        // Función auxiliar para obtener el título del eje X según el periodo
+        function getTituloEjeX(tipoPeriodo) {
+            switch(tipoPeriodo) {
+                case 'año':
+                    return 'Meses del Año';
+                case 'mes':
+                    return 'Semanas/Días del Mes';
+                case 'semana':
+                    return 'Días de la Semana';
+                default:
+                    return 'Periodo';
+            }
         }
 
         // Función para mostrar/ocultar COPEs
@@ -1787,6 +1957,104 @@ $Usuario = $_SESSION['usuario'];
                 boton.html('Ver menos');
             }
         }
+        
+        // ============================================
+        // INICIALIZACIÓN DE SELECTORES DE PERÍODOS
+        // ============================================
+        
+        // Esta función actualiza el selector de períodos según el tipo seleccionado
+        function actualizarSelectorPeriodos() {
+            console.log('=== actualizarSelectorPeriodos ===');
+            const tipoPeriodo = $('#tipoPeriodo').val();
+            const periodoSelect = $('#periodoSelect');
+            periodoSelect.empty();
+            
+            console.log('Tipo de período seleccionado:', tipoPeriodo);
+            
+            const fechaActual = new Date();
+            let opciones = [];
+            
+            switch(tipoPeriodo) {
+                case 'semana':
+                    console.log('Generando opciones para SEMANA');
+                    // Últimas 12 semanas
+                    for(let i = 0; i < 12; i++) {
+                        const fecha = new Date(fechaActual);
+                        fecha.setDate(fecha.getDate() - (i * 7));
+                        const numSemana = getWeekNumber(fecha)[1];
+                        const anio = getWeekNumber(fecha)[0];
+                        opciones.push({
+                            value: `${anio}-W${String(numSemana).padStart(2, '0')}`,
+                            text: `Semana ${numSemana} (${fecha.toLocaleDateString('es-MX', {month: 'short', year: 'numeric'})})`
+                        });
+                    }
+                    break;
+                    
+                case 'mes':
+                    console.log('Generando opciones para MES');
+                    // Mes actual y últimos 11 meses (total 12 meses)
+                    for(let i = 0; i < 12; i++) {
+                        const fecha = new Date(fechaActual.getFullYear(), fechaActual.getMonth() - i, 1);
+                        const valorMes = fecha.toISOString().slice(0,7); // YYYY-MM
+                        opciones.push({
+                            value: valorMes,
+                            text: fecha.toLocaleDateString('es-MX', {month: 'long', year: 'numeric'})
+                        });
+                    }
+                    break;
+                    
+                case 'año':
+                    console.log('Generando opciones para AÑO');
+                    // Últimos 5 años
+                    const anioActual = fechaActual.getFullYear();
+                    for(let i = 0; i < 5; i++) {
+                        const anio = anioActual - i;
+                        opciones.push({
+                            value: anio.toString(),
+                            text: anio.toString()
+                        });
+                    }
+                    break;
+            }
+            
+            console.log('Opciones generadas:', opciones);
+            
+            // Agregar opciones al select
+            opciones.forEach(opcion => {
+                periodoSelect.append(new Option(opcion.text, opcion.value));
+            });
+            
+            const valorSeleccionado = periodoSelect.val();
+            console.log('Valor seleccionado después de llenar el select:', valorSeleccionado);
+            
+            // Cargar datos con el nuevo período seleccionado
+            cargarComparativo(tipoPeriodo, valorSeleccionado);
+        }
+        
+        // Función para obtener el número de semana del año
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+            return [d.getUTCFullYear(), weekNo];
+        }
+        
+        // Event delegation para elementos dinámicos
+        $(document).on('change', '#tipoPeriodo', function() {
+            console.log('=== Evento: Cambio en #tipoPeriodo ===');
+            console.log('Nuevo valor:', $(this).val());
+            actualizarSelectorPeriodos();
+        });
+        
+        $(document).on('change', '#periodoSelect', function() {
+            console.log('=== Evento: Cambio en #periodoSelect ===');
+            const periodo = $('#tipoPeriodo').val();
+            const valor = $(this).val();
+            console.log('Tipo de período:', periodo);
+            console.log('Valor seleccionado:', valor);
+            cargarComparativo(periodo, valor);
+        });
     </script>
 </body>
 </html>

@@ -61,35 +61,134 @@ try {
         }
 
         private function obtenerRankingTecnicos($fecha_inicio, $fecha_fin) {
+            // Devuelve para cada técnico: asignadas_tac, liquidadas_tac, liquidadas_coordiapp, sin_registro_coordiapp, y total (liquidadas_coordiapp)
             $idsCopes = $this->obtenerIdsCopesCoordinador();
             if (empty($idsCopes)) { return []; }
 
+            // Preparar placeholders
             $inBuild = $this->obtenerIdsCopesCoordinadorSafePlaceholders($idsCopes);
             $placeholders = $inBuild['placeholders'];
             $params = $inBuild['params'];
 
-            $sql = "
+            // 1) Obtener liquidadas en Coordiapp por técnico (vista completadas)
+            $sql_coordiapp = "
                 SELECT 
                     TRIM(CONCAT(IFNULL(Nombre_T,''), ' ', IFNULL(Apellidos_T,''))) AS tecnico,
                     IFNULL(NExpediente,'') AS expediente,
                     TRIM(CONCAT(IFNULL(c.COPE,''))) AS cope,
                     TRIM(CONCAT(IFNULL(Contratista,''),' ',IFNULL(apellido_paterno,''),' ',IFNULL(apellido_materno,''))) AS contratista,
-                    COUNT(*) AS total
-                FROM View_Detalle_Coordiapp_Completadas
-                LEFT JOIN copes c ON c.id = FK_Cope
-                WHERE DATE(Fecha_Coordiapp) BETWEEN ? AND ?
-                  AND FK_Cope IN ($placeholders)
-                GROUP BY expediente, tecnico, cope, contratista
-                ORDER BY total DESC
+                    COUNT(*) AS liquidadas_coordiapp
+                FROM View_Detalle_Coordiapp_Completadas v
+                LEFT JOIN copes c ON c.id = v.FK_Cope
+                WHERE DATE(v.Fecha_Coordiapp) BETWEEN ? AND ?
+                  AND v.FK_Cope IN ($placeholders)
+                GROUP BY tecnico, expediente, cope, contratista
             ";
 
-            $stmt = $this->conn_coordiapp->prepare($sql);
+            $stmt = $this->conn_coordiapp->prepare($sql_coordiapp);
             $bindParams = array_merge([$fecha_inicio, $fecha_fin], $params);
             $stmt->execute($bindParams);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rows_coordiapp = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 2) Obtener asignadas y liquidadas en TAC por expediente/folio y técnico desde la BD TAC
+            // Usamos NExpediente y Folio_Pisa mappeados; asumimos que NExpediente coincide con Expediente en TAC o Folio_Pisa
+            // Vamos a contar por técnico (nombre técnico en TAC) las asignadas y liquidadas
+
+            // Obtener los expedientes/folios únicos desde la vista completadas (para acotar consulta TAC)
+            $folios = array();
+            foreach ($rows_coordiapp as $r) {
+                if (!empty($r['expediente'])) $folios[] = $r['expediente'];
+            }
+            $folios = array_values(array_unique($folios));
+
+            $map_tac_counts = [];
+            if (!empty($folios)) {
+                // Preparar placeholders para los folios
+                $placeholders_folios = implode(',', array_fill(0, count($folios), '?'));
+                $sql_tac = "
+                    SELECT 
+                        TRIM(IFNULL(tecnico,'')) AS tecnico_tac,
+                        IFNULL(Expediente,'') AS expediente,
+                        SUM(CASE WHEN Calificador_Edo = 'ASIGNADA' THEN 1 ELSE 0 END) AS asignadas_tac,
+                        SUM(CASE WHEN Calificador_Edo = 'COMPLETADA' THEN 1 ELSE 0 END) AS liquidadas_tac
+                    FROM qm_tac_prod_bolsa
+                    WHERE DATE(FECHA_LIQ) BETWEEN ? AND ?
+                      AND (Expediente IN ($placeholders_folios) OR Folio_Pisa IN ($placeholders_folios))
+                    GROUP BY tecnico_tac, expediente
+                ";
+
+                $stmt2 = $this->conn_tac->prepare($sql_tac);
+                // bind parameters: fecha_inicio, fecha_fin, luego los folios (duplicados para Expediente y Folio_Pisa)
+                $executeParams = array_merge([$fecha_inicio, $fecha_fin], $folios, $folios);
+                $stmt2->execute($executeParams);
+                $tac_rows = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($tac_rows as $tr) {
+                    $tname = trim($tr['tecnico_tac']);
+                    if ($tname === '') $tname = 'Sin técnico';
+                    if (!isset($map_tac_counts[$tname])) {
+                        $map_tac_counts[$tname] = ['asignadas_tac' => 0, 'liquidadas_tac' => 0, 'expedientes' => []];
+                    }
+                    $map_tac_counts[$tname]['asignadas_tac'] += intval($tr['asignadas_tac']);
+                    $map_tac_counts[$tname]['liquidadas_tac'] += intval($tr['liquidadas_tac']);
+                    $map_tac_counts[$tname]['expedientes'][] = $tr['expediente'];
+                }
+            }
+
+            // 3) Combinar datos y construir resultado por técnico
+            $result_map = [];
+            foreach ($rows_coordiapp as $r) {
+                $tname = trim($r['tecnico']) ?: 'Sin técnico';
+                if (!isset($result_map[$tname])) {
+                    $result_map[$tname] = [
+                        'tecnico' => $tname,
+                        'expediente' => $r['expediente'],
+                        'cope' => $r['cope'],
+                        'contratista' => $r['contratista'],
+                        'liquidadas_coordiapp' => 0,
+                        'asignadas_tac' => 0,
+                        'liquidadas_tac' => 0,
+                        'sin_registro_coordiapp' => 0,
+                        'total' => 0
+                    ];
+                }
+                $result_map[$tname]['liquidadas_coordiapp'] += intval($r['liquidadas_coordiapp']);
+            }
+
+            // Añadir datos TAC al mapa
+            foreach ($map_tac_counts as $tname => $counts) {
+                if (!isset($result_map[$tname])) {
+                    $result_map[$tname] = [
+                        'tecnico' => $tname,
+                        'expediente' => '',
+                        'cope' => '',
+                        'contratista' => '',
+                        'liquidadas_coordiapp' => 0,
+                        'asignadas_tac' => 0,
+                        'liquidadas_tac' => 0,
+                        'sin_registro_coordiapp' => 0,
+                        'total' => 0
+                    ];
+                }
+                $result_map[$tname]['asignadas_tac'] += intval($counts['asignadas_tac']);
+                $result_map[$tname]['liquidadas_tac'] += intval($counts['liquidadas_tac']);
+            }
+
+            // Calcular sin_registro_coordiapp: para cada técnico, estimamos como asignadas_tac - liquidadas_coordiapp (no perfecto pero útil)
+            foreach ($result_map as $tname => &$entry) {
+                $entry['sin_registro_coordiapp'] = max(0, intval($entry['asignadas_tac']) - intval($entry['liquidadas_coordiapp']));
+                $entry['total'] = intval($entry['liquidadas_coordiapp']);
+            }
+
+            // Convertir a array ordenado por total (liquidadas_coordiapp)
+            $results = array_values($result_map);
+            usort($results, function($a, $b) { return $b['total'] <=> $a['total']; });
+
+            return $results;
         }
 
         private function obtenerRankingContratistas($fecha_inicio, $fecha_fin) {
+            // Devuelve por contratista: asignadas_tac, liquidadas_tac, liquidadas_coordiapp, sin_registro_coordiapp, total
             $idsCopes = $this->obtenerIdsCopesCoordinador();
             if (empty($idsCopes)) { return []; }
 
@@ -97,24 +196,127 @@ try {
             $placeholders = $inBuild['placeholders'];
             $params = $inBuild['params'];
 
-            $sql = "
+            // 1) Coordiapp: liquidadas por contratista
+            $sql_coordiapp = "
                 SELECT 
                     TRIM(CONCAT(IFNULL(Contratista,''),' ',IFNULL(apellido_paterno,''),' ',IFNULL(apellido_materno,''))) AS contratista,
-                    COUNT(*) AS total
-                FROM View_Detalle_Coordiapp_Completadas
-                WHERE DATE(Fecha_Coordiapp) BETWEEN ? AND ?
-                  AND FK_Cope IN ($placeholders)
+                    COUNT(*) AS liquidadas_coordiapp
+                FROM View_Detalle_Coordiapp_Completadas v
+                WHERE DATE(v.Fecha_Coordiapp) BETWEEN ? AND ?
+                  AND v.FK_Cope IN ($placeholders)
                 GROUP BY Contratista, apellido_paterno, apellido_materno
-                ORDER BY total DESC
             ";
 
-            $stmt = $this->conn_coordiapp->prepare($sql);
+            $stmt = $this->conn_coordiapp->prepare($sql_coordiapp);
             $bindParams = array_merge([$fecha_inicio, $fecha_fin], $params);
             $stmt->execute($bindParams);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rows_coordiapp = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 2) TAC: obtener asignadas/liquidadas por Expediente y mapear Expediente => Contratista
+            // Primero agregamos en TAC por Expediente para el rango y COPEs del coordinador
+            $map_tac = [];
+            // Usamos los mismos COPEs del coordinador para acotar la consulta en TAC
+            $sql_tac_expedientes = "
+                SELECT 
+                    IFNULL(Expediente,'') AS expediente,
+                    SUM(CASE WHEN Calificador_Edo = 'ASIGNADA' THEN 1 ELSE 0 END) AS asignadas_tac,
+                    SUM(CASE WHEN Calificador_Edo = 'COMPLETADA' THEN 1 ELSE 0 END) AS liquidadas_tac
+                FROM qm_tac_prod_bolsa
+                WHERE DATE(FECHA_LIQ) BETWEEN ? AND ?
+                  AND NOM_CT IN ($placeholders)
+                GROUP BY expediente
+            ";
+
+            $stmt2 = $this->conn_tac->prepare($sql_tac_expedientes);
+            $bindParamsTac = array_merge([$fecha_inicio, $fecha_fin], $params);
+            $stmt2->execute($bindParamsTac);
+            $tac_rows = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+            // Extraer expedientes para mapearlos en la base COORDIAPP (tabla tecnicos -> contratistas)
+            $expedientes = [];
+            foreach ($tac_rows as $tr) {
+                if (!empty($tr['expediente'])) $expedientes[] = $tr['expediente'];
+            }
+            $expedientes = array_values(array_unique($expedientes));
+
+            $expediente_to_contratista = [];
+            if (!empty($expedientes)) {
+                // Consultar en conn_coordiapp: tabla tecnicos join contratistas para obtener el nombre del contratista
+                $placeholders_exp = implode(',', array_fill(0, count($expedientes), '?'));
+                $sql_map = "
+                    SELECT t.Expediente, t.FK_Contratista_Tecnico, IFNULL(c.Contratista,'') AS contratista
+                    FROM tecnicos t
+                    LEFT JOIN contratistas c ON t.FK_Contratista_Tecnico = c.idContratistas
+                    WHERE t.Expediente IN ($placeholders_exp)
+                ";
+
+                $stmtMap = $this->conn_coordiapp->prepare($sql_map);
+                $stmtMap->execute($expedientes);
+                $map_rows = $stmtMap->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($map_rows as $mr) {
+                    $exp = $mr['Expediente'];
+                    $expediente_to_contratista[$exp] = $mr['contratista'];
+                }
+            }
+
+            // Ahora agregar los totales TAC por contratista usando el mapeo por expediente
+            foreach ($tac_rows as $tr) {
+                $exp = $tr['expediente'];
+                $asig = intval($tr['asignadas_tac']);
+                $liq = intval($tr['liquidadas_tac']);
+                $contr_name = isset($expediente_to_contratista[$exp]) && $expediente_to_contratista[$exp] !== '' ? $expediente_to_contratista[$exp] : 'Sin contratista';
+                if (!isset($map_tac[$contr_name])) {
+                    $map_tac[$contr_name] = ['asignadas_tac' => 0, 'liquidadas_tac' => 0];
+                }
+                $map_tac[$contr_name]['asignadas_tac'] += $asig;
+                $map_tac[$contr_name]['liquidadas_tac'] += $liq;
+            }
+
+            // 3) Combinar y construir resultado
+            $result = [];
+            foreach ($rows_coordiapp as $r) {
+                $name = $r['contratista'];
+                if (!isset($result[$name])) {
+                    $result[$name] = [
+                        'contratista' => $name,
+                        'liquidadas_coordiapp' => 0,
+                        'asignadas_tac' => 0,
+                        'liquidadas_tac' => 0,
+                        'sin_registro_coordiapp' => 0,
+                        'total' => 0
+                    ];
+                }
+                $result[$name]['liquidadas_coordiapp'] += intval($r['liquidadas_coordiapp']);
+            }
+
+            foreach ($map_tac as $name => $counts) {
+                if (!isset($result[$name])) {
+                    $result[$name] = [
+                        'contratista' => $name,
+                        'liquidadas_coordiapp' => 0,
+                        'asignadas_tac' => 0,
+                        'liquidadas_tac' => 0,
+                        'sin_registro_coordiapp' => 0,
+                        'total' => 0
+                    ];
+                }
+                $result[$name]['asignadas_tac'] += $counts['asignadas_tac'];
+                $result[$name]['liquidadas_tac'] += $counts['liquidadas_tac'];
+            }
+
+            foreach ($result as $name => &$entry) {
+                $entry['sin_registro_coordiapp'] = max(0, intval($entry['asignadas_tac']) - intval($entry['liquidadas_coordiapp']));
+                $entry['total'] = intval($entry['liquidadas_coordiapp']);
+            }
+
+            $out = array_values($result);
+            usort($out, function($a, $b){ return $b['total'] <=> $a['total']; });
+            return $out;
         }
 
         private function obtenerRankingCopes($fecha_inicio, $fecha_fin) {
+            // Devuelve por COPE: asignadas_tac, liquidadas_tac, liquidadas_coordiapp, sin_registro_coordiapp, total
             $idsCopes = $this->obtenerIdsCopesCoordinador();
             if (empty($idsCopes)) { return []; }
 
@@ -122,22 +324,91 @@ try {
             $placeholders = $inBuild['placeholders'];
             $params = $inBuild['params'];
 
-            $sql = "
+            // 1) Coordiapp: liquidadas por COPE
+            $sql_coordiapp = "
                 SELECT 
                     TRIM(IFNULL(c.COPE,'')) AS cope,
-                    COUNT(*) AS total
+                    COUNT(*) AS liquidadas_coordiapp
                 FROM View_Detalle_Coordiapp_Completadas v
                 LEFT JOIN copes c ON c.id = v.FK_Cope
                 WHERE DATE(v.Fecha_Coordiapp) BETWEEN ? AND ?
                   AND v.FK_Cope IN ($placeholders)
                 GROUP BY c.COPE
-                ORDER BY total DESC
             ";
 
-            $stmt = $this->conn_coordiapp->prepare($sql);
+            $stmt = $this->conn_coordiapp->prepare($sql_coordiapp);
             $bindParams = array_merge([$fecha_inicio, $fecha_fin], $params);
             $stmt->execute($bindParams);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rows_coordiapp = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 2) TAC: asignadas/liquidadas por COPE (usando NOM_CT)
+            $copes_names = array_map(function($r){ return $r['cope']; }, $rows_coordiapp);
+            $copes_names = array_values(array_unique($copes_names));
+
+            $map_tac = [];
+            if (!empty($copes_names)) {
+                $placeholders_ct = implode(',', array_fill(0, count($copes_names), '?'));
+                $sql_tac = "
+                    SELECT 
+                        TRIM(IFNULL(NOM_CT,'')) AS cope_tac,
+                        SUM(CASE WHEN Calificador_Edo = 'ASIGNADA' THEN 1 ELSE 0 END) AS asignadas_tac,
+                        SUM(CASE WHEN Calificador_Edo = 'COMPLETADA' THEN 1 ELSE 0 END) AS liquidadas_tac
+                    FROM qm_tac_prod_bolsa
+                    WHERE DATE(FECHA_LIQ) BETWEEN ? AND ?
+                      AND NOM_CT IN ($placeholders_ct)
+                    GROUP BY cope_tac
+                ";
+
+                $stmt2 = $this->conn_tac->prepare($sql_tac);
+                $executeParams = array_merge([$fecha_inicio, $fecha_fin], $copes_names);
+                $stmt2->execute($executeParams);
+                $tac_rows = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($tac_rows as $tr) {
+                    $map_tac[trim($tr['cope_tac'])] = ['asignadas_tac' => intval($tr['asignadas_tac']), 'liquidadas_tac' => intval($tr['liquidadas_tac'])];
+                }
+            }
+
+            // 3) Combinar
+            $result = [];
+            foreach ($rows_coordiapp as $r) {
+                $name = $r['cope'];
+                if (!isset($result[$name])) {
+                    $result[$name] = [
+                        'cope' => $name,
+                        'liquidadas_coordiapp' => 0,
+                        'asignadas_tac' => 0,
+                        'liquidadas_tac' => 0,
+                        'sin_registro_coordiapp' => 0,
+                        'total' => 0
+                    ];
+                }
+                $result[$name]['liquidadas_coordiapp'] += intval($r['liquidadas_coordiapp']);
+            }
+
+            foreach ($map_tac as $name => $counts) {
+                if (!isset($result[$name])) {
+                    $result[$name] = [
+                        'cope' => $name,
+                        'liquidadas_coordiapp' => 0,
+                        'asignadas_tac' => 0,
+                        'liquidadas_tac' => 0,
+                        'sin_registro_coordiapp' => 0,
+                        'total' => 0
+                    ];
+                }
+                $result[$name]['asignadas_tac'] += $counts['asignadas_tac'];
+                $result[$name]['liquidadas_tac'] += $counts['liquidadas_tac'];
+            }
+
+            foreach ($result as $name => &$entry) {
+                $entry['sin_registro_coordiapp'] = max(0, intval($entry['asignadas_tac']) - intval($entry['liquidadas_coordiapp']));
+                $entry['total'] = intval($entry['liquidadas_coordiapp']);
+            }
+
+            $out = array_values($result);
+            usort($out, function($a, $b){ return $b['total'] <=> $a['total']; });
+            return $out;
         }
         
         // Función para obtener los COPEs del coordinador

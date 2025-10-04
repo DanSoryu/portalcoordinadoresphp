@@ -906,6 +906,10 @@ $Usuario = $_SESSION['usuario'];
                                                 <th>Expediente</th>
                                                 <th>COPE</th>
                                                 <th>Contratista</th>
+                                                <th>Asignadas (TAC)</th>
+                                                <th>Liquidadas (TAC)</th>
+                                                <th>Liquidadas (Coordiapp)</th>
+                                                <th>Sin registro (Coordiapp)</th>
                                                 <th>Total</th>
                                             </tr>
                                         </thead>
@@ -917,6 +921,10 @@ $Usuario = $_SESSION['usuario'];
                                                     <td>${t.expediente || ''}</td>
                                                     <td>${t.cope || ''}</td>
                                                     <td>${(t.contratista || '').toString().toUpperCase()}</td>
+                                                    <td>${t.asignadas_tac || 0}</td>
+                                                    <td>${t.liquidadas_tac || 0}</td>
+                                                    <td>${t.liquidadas_coordiapp || 0}</td>
+                                                    <td>${t.sin_registro_coordiapp || 0}</td>
                                                     <td>${t.total || 0}</td>
                                                 </tr>
                                             `).join('') : ''}
@@ -940,6 +948,10 @@ $Usuario = $_SESSION['usuario'];
                                             <tr>
                                                 <th>#</th>
                                                 <th>Contratista</th>
+                                                <th>Asignadas (TAC)</th>
+                                                <th>Liquidadas (TAC)</th>
+                                                <th>Liquidadas (Coordiapp)</th>
+                                                <th>Sin registro (Coordiapp)</th>
                                                 <th>Total</th>
                                             </tr>
                                         </thead>
@@ -948,6 +960,10 @@ $Usuario = $_SESSION['usuario'];
                                                 <tr>
                                                     <td>${idx + 1}</td>
                                                     <td>${(c.contratista || '').toString().toUpperCase()}</td>
+                                                    <td>${c.asignadas_tac || 0}</td>
+                                                    <td>${c.liquidadas_tac || 0}</td>
+                                                    <td>${c.liquidadas_coordiapp || 0}</td>
+                                                    <td>${c.sin_registro_coordiapp || 0}</td>
                                                     <td>${c.total || 0}</td>
                                                 </tr>
                                             `).join('') : ''}
@@ -971,6 +987,10 @@ $Usuario = $_SESSION['usuario'];
                                             <tr>
                                                 <th>#</th>
                                                 <th>COPE</th>
+                                                <th>Asignadas (TAC)</th>
+                                                <th>Liquidadas (TAC)</th>
+                                                <th>Liquidadas (Coordiapp)</th>
+                                                <th>Sin registro (Coordiapp)</th>
                                                 <th>Total</th>
                                             </tr>
                                         </thead>
@@ -979,6 +999,10 @@ $Usuario = $_SESSION['usuario'];
                                                 <tr>
                                                     <td>${idx + 1}</td>
                                                     <td>${(r.cope || '').toString().toUpperCase()}</td>
+                                                    <td>${r.asignadas_tac || 0}</td>
+                                                    <td>${r.liquidadas_tac || 0}</td>
+                                                    <td>${r.liquidadas_coordiapp || 0}</td>
+                                                    <td>${r.sin_registro_coordiapp || 0}</td>
                                                     <td>${r.total || 0}</td>
                                                 </tr>
                                             `).join('') : ''}
@@ -1006,19 +1030,22 @@ $Usuario = $_SESSION['usuario'];
             // Inicializar DataTables para rankings con orden descendente por Total
             try {
                 if (window.DataTable) {
+                    // Técnicos: 'Total' ahora en el índice 8 (0-based)
                     new DataTable('#tablaRankingTecnicos', {
                         pageLength: 10,
-                        order: [[5, 'desc']],
+                        order: [[8, 'desc']],
                         language: { url: 'https://cdn.datatables.net/plug-ins/1.10.16/i18n/Spanish.json' }
                     });
+                    // Contratistas: 'Total' ahora en el índice 6
                     new DataTable('#tablaRankingContratistas', {
                         pageLength: 10,
-                        order: [[2, 'desc']],
+                        order: [[6, 'desc']],
                         language: { url: 'https://cdn.datatables.net/plug-ins/1.10.16/i18n/Spanish.json' }
                     });
+                    // COPEs: 'Total' ahora en el índice 6
                     new DataTable('#tablaRankingCopes', {
                         pageLength: 10,
-                        order: [[2, 'desc']],
+                        order: [[6, 'desc']],
                         language: { url: 'https://cdn.datatables.net/plug-ins/1.10.16/i18n/Spanish.json' }
                     });
                 }
